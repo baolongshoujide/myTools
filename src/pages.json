@@ -1,0 +1,65 @@
+{
+	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "uni-app"
+			}
+		},
+		{
+			"path": "pages/my/index",
+			"style": {
+				"navigationBarTitleText": "my"
+			}
+		},
+		{
+			"path": "pages/function/index",
+			"style": {
+				"navigationBarTitleText": "功能"
+			}
+		}
+	],
+	// "tabBar": {
+	// 	"selectedColor": "#ff0000",
+	// 	// #ifndef MP-WEIXIN
+    // 	"midButton": {
+    // 	  "width": "60px",
+    // 	  "height": "60px",
+    // 	  "text": "+",
+    // 	  "color": "#ffffff",
+    // 	  "backgroundColor": "#ff5500"
+    // 	},
+    // 	// #endif
+		
+	// 	"list": [
+	// 		{
+	// 			"pagePath": "pages/function/index",
+	// 			"text": "功能",
+	// 			"iconPath": "static/user_default.png",
+	// 			"selectedIconPath": "static/user_selected.png"
+	// 		},
+	// 		 //#ifdef MP-WEIXIN
+    //         {
+    //             "pagePath": "pages/tabbar-3/tabbar-3",
+    //             "iconPath": "static/home_default.png",
+    //             "selectedIconPath": "static/home_default.png",
+    //             "text": "发布"
+    //         },
+    //         //#endif
+	// 		{
+	// 			"pagePath": "pages/index/index",
+	// 			"text": "首页",
+	// 			"iconPath": "static/home_default.png",
+	// 			"selectedIconPath": "static/home_selected.png"
+	// 		}
+			
+			
+	// 	]
+	// },
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	}
+}
