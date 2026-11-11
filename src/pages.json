@@ -19,43 +19,31 @@
 			}
 		}
 	],
-	// "tabBar": {
-	// 	"selectedColor": "#ff0000",
-	// 	// #ifndef MP-WEIXIN
-    // 	"midButton": {
-    // 	  "width": "60px",
-    // 	  "height": "60px",
-    // 	  "text": "+",
-    // 	  "color": "#ffffff",
-    // 	  "backgroundColor": "#ff5500"
-    // 	},
-    // 	// #endif
-		
-	// 	"list": [
-	// 		{
-	// 			"pagePath": "pages/function/index",
-	// 			"text": "功能",
-	// 			"iconPath": "static/user_default.png",
-	// 			"selectedIconPath": "static/user_selected.png"
-	// 		},
-	// 		 //#ifdef MP-WEIXIN
-    //         {
-    //             "pagePath": "pages/tabbar-3/tabbar-3",
-    //             "iconPath": "static/home_default.png",
-    //             "selectedIconPath": "static/home_default.png",
-    //             "text": "发布"
-    //         },
-    //         //#endif
-	// 		{
-	// 			"pagePath": "pages/index/index",
-	// 			"text": "首页",
-	// 			"iconPath": "static/home_default.png",
-	// 			"selectedIconPath": "static/home_selected.png"
-	// 		}
-			
-			
-	// 	]
-	// },
+	"easycom": {
+	  "autoscan": true,
+	  "custom": {
+	    "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue"
+	  }
+	},
+	"subPackages": [
+		{
+			"root": "pagesWheel",
+			"pages": [
+			  {
+				"path": "wheelSetting/index",
+				"style": {
+					"navigationBarTitleText": "设置"
+				}
+			  },
+			  {
+				"path": "wheelEdit/index",
+				"style": {
+					"navigationBarTitleText": "编辑"
+					}
+			  }
+			]
+		}
+	],
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
 		"navigationBarTitleText": "uni-app",

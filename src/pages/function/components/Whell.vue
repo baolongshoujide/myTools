@@ -3,15 +3,15 @@
   <view class="page">
     <view class="wheel-container">
       <!-- 圆盘 -->
-      <view class="wheel" :style="{background:wheelBackground,transform: `rotate(${rotate}deg)`}">
+      <view class="wheel" :style="{background:wheelBackground,transform: `rotate(${rotate}deg)`, transitionDuration: `${wheelStore.spinTime}s`}">
         <!-- 六个奖项文字 -->
         <view
-          v-for="(item, index) in prizes"
+          v-for="(item, index) in wheelStore.prizes"
           :key="index"
           class="prize"
           :style="{
               transform: `translate(-50%, -50%)
-                rotate(${index * (360 / prizes.length) + (180 / prizes.length)}deg)
+                rotate(${index * (360 / wheelStore.prizes.length) + (180 / wheelStore.prizes.length)}deg)
                 translateY(-32vw)
                 `
             }"
@@ -22,46 +22,88 @@
         <!-- 中间按钮 -->
         
       </view>
-    <view class="center-button" @tap="spin">
+      <view class="center-button" @tap="spin">
+        <view class="pointer"></view>
           GO
-        </view>
-      <!-- 顶部指针 -->
-      <view class="pointer"></view>
+      </view>
+      
     </view>
+    <view class="footer">
+        <uni-icons
+        type="gear"
+        color=""
+        size="45"
+        @tap="uni.navigateTo({url:`/pagesWheel/wheelSetting/index`})"
+      />
+      <uni-icons
+        type="loop"
+        color=""
+        size="45"
+      />
+      <uni-icons
+        type="compose"
+        color=""
+        size="45"
+        @tap="uni.navigateTo({url:`/pagesWheel/wheelEdit/index`})"
+
+      />
+      </view>
   </view>
 </template>
 
-<script setup>
-import { computed, ref } from 'vue';
 
-const prizes = [
-  '一等奖',
-  '二等奖',
-  '三等奖',
-  '谢谢参与',
-  '幸运奖',
-  '再来一次',
-]
-// 每个奖项对应一种颜色
+<script setup>
+import { computed, ref } from 'vue'
+import { useWheelStore } from '@/store/modules/wheel'
+
+const wheelStore = useWheelStore()
+
+// 预设 12 种颜色
 const colors = [
   '#ff6868',
   '#ffcf52',
   '#65c8a5',
   '#58a9ed',
   '#a68aec',
-  '#ff9b50'
+  '#ff9b50',
+  '#e8798e',
+  '#42c5c5',
+  '#8068d9',
+  '#b8d957',
+  '#d477bc',
+  '#557bea'
 ]
-const wheelBackground = computed(()=>{
-    const one = 360 /prizes.length
-    const everybig = prizes.map((item,index) =>{
-        const start = one * index
-        const end = one *(index+1)
-        return `${colors[index % colors.length]} ${start}deg ${end}deg`
-    })
-    return `conic-gradient(${everybig.join(', ')})`
+
+// 颜色分配顺序
+const colorOrder = [
+  0, 6, 3, 9,
+  1, 7, 4, 10,
+  2, 8, 5, 11
+]
+
+// 根据奖品索引获取颜色
+function getPrizeColor(index) {
+  const colorIndex = colorOrder[index % colorOrder.length]
+  return colors[colorIndex]
+}
+
+// 根据奖品数量动态生成转盘背景
+const wheelBackground = computed(() => {
+  const one = 360 / wheelStore.prizes.length
+
+  const everybig = wheelStore.prizes.map((item, index) => {
+    const start = one * index
+    const end = one * (index + 1)
+
+    return `${getPrizeColor(index)} ${start}deg ${end}deg`
+  })
+
+  return `conic-gradient(${everybig.join(', ')})`
 })
 
+// 转盘旋转角度
 const rotate = ref(0)
+
 // 是否正在旋转
 const isSpinning = ref(false)
 
@@ -77,10 +119,10 @@ function spin() {
   isSpinning.value = true
 
   // 随机选择一个奖项
-  const index = Math.floor(Math.random() * prizes.length)
+  const index = Math.floor(Math.random() * wheelStore.prizes.length)
 
-  // 每个奖项占60度
-  const anglePerPrize = 360 / prizes.length
+  // 每个奖项占据的角度
+  const anglePerPrize = 360 / wheelStore.prizes.length
 
   // 计算中奖区域的中心角度
   const prizeCenterAngle = index * anglePerPrize + anglePerPrize / 2
@@ -88,7 +130,7 @@ function spin() {
   // 当前圆盘角度
   const currentAngle = rotate.value % 360
 
-  // 计算需要补转多少度，让中奖区域对准指针
+  // 计算需要补转的角度
   const alignAngle = (
     360 - (prizeCenterAngle + currentAngle) % 360
   ) % 360
@@ -104,13 +146,14 @@ function spin() {
     // 显示中奖结果
     uni.showModal({
       title: '抽奖结果',
-      content: `恭喜你获得：${prizes[index]}`,
+      content: `恭喜你获得：${wheelStore.prizes[index]}`,
       showCancel: false
     })
 
-  }, 5000)
+  }, wheelStore.spinTime * 1000)
 }
 </script>
+
 
 <style lang="scss" scoped>
 .page{
@@ -155,7 +198,7 @@ function spin() {
                             
                 border-radius: 50%;
                 background: #fff;
-                border: 5rpx solid #ffb52e;
+                border: 10rpx solid #ffb52e;
                             
                 display: flex;
                 justify-content: center;
@@ -169,7 +212,7 @@ function spin() {
                 
         .pointer {
              position: absolute;
-             top: 10rpx;
+             top: -49rpx;
              left: 50%;
              transform: translateX(-50%);
              z-index: 3;
@@ -179,8 +222,22 @@ function spin() {
                     
              border-left: 13px solid transparent;
              border-right: 13px solid transparent;
-             border-top: 25px solid #e94335;
+             border-bottom: 22px solid #ffb52e;
             }
+     }
+     .footer{
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      padding: 30rpx;
+      box-sizing: border-box;
+      uni-icons{
+        padding: 30rpx;
+        height: 100%;
+        background-color: #e0d7d7;
+        border-radius: 50%;
+
+      }
      }
 }
 </style>

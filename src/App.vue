@@ -5,9 +5,6 @@ onLaunch(() => {
 });
 onShow(() => {
   console.log("App Show");
-  uni.onTabBarMidButtonTap(()=>{
-  console.log('中间按钮被点击了')
-})
 });
 onHide(() => {
   console.log("App Hide");
