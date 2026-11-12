@@ -2,10 +2,10 @@
   <view class="input-box">
     <uni-easyinput
       v-bind="$attrs"
-      :model-value="modelValue"
+      :model-value="props.modelValue"
       :input-border="false"
       :styles="inputStyles"
-      placeholder-style="font-size: 18px;"
+      :placeholder-style="props.placeholderStyle"
       @update:model-value="onUpdateModelValue"
     >
       <template #left>
@@ -18,9 +18,12 @@
 <script setup lang="ts">
 defineOptions({ inheritAttrs: false })
 
-defineProps<{
+const props = withDefaults(defineProps<{
   modelValue?: string | number | null
-}>()
+  placeholderStyle?: string
+}>(), {
+  placeholderStyle: 'font-size: 18px;',
+})
 
 const emit = defineEmits<{
   (event: 'update:modelValue', value: string | number): void

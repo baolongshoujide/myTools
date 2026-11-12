@@ -49,6 +49,7 @@
       />
       </view>
   </view>
+  <view v-if="isSpinning" class="spin-mask"></view>
 </template>
 
 
@@ -239,5 +240,14 @@ function spin() {
 
       }
      }
+}
+.spin-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  background: transparent;
 }
 </style>

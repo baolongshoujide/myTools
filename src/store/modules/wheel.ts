@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export const useWheelStore = defineStore('wheel', () => {
   const name = ref('我的转盘')
@@ -12,21 +12,20 @@ export const useWheelStore = defineStore('wheel', () => {
     '幸运奖',
     '再来一次',
   ])
+  
 
-  const addPrize = () => {
-    prizes.value.push(`奖项${prizes.value.length + 1}`)
-  }
+  
 
-  const removePrize = (index: number) => {
-    if (prizes.value.length <= 2) return
-    prizes.value.splice(index, 1)
+  const addWheel = (data: { name: string; spinTime: number; prizes: string[] }) => {
+    name.value = data.name
+    spinTime.value = data.spinTime
+    prizes.value = [...data.prizes]
   }
 
   return {
     name,
     spinTime,
     prizes,
-    addPrize,
-    removePrize,
+    addWheel,
   }
 })

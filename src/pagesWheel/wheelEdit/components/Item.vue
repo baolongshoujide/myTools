@@ -27,7 +27,7 @@
       font-size: 35rpx;
     }
     .group-content{
-        margin: -15px;
         background-color: #fff5e9;
     }
+    
 </style>
