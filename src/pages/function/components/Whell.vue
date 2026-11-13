@@ -2,62 +2,88 @@
 <template>
   <view class="page">
     <view class="wheel-container">
+
+      <!-- 当前指针经过的奖项 -->
+      <view class="current-prize">
+        {{ displayPrizes[displayIndex] || '' }}
+      </view>
+
       <!-- 圆盘 -->
-      <view class="wheel" :style="{background:wheelBackground,transform: `rotate(${rotate}deg)`, transitionDuration: `${wheelStore.spinTime}s`}">
-        <!-- 六个奖项文字 -->
+      <view
+        class="wheel"
+        :style="{
+          background: wheelBackground,
+          transform: `rotate(${rotate}deg)`
+        }"
+      >
+        <!-- 奖项文字 -->
         <view
-          v-for="(item, index) in wheelStore.prizes"
+          v-for="(item, index) in displayPrizes"
           :key="index"
           class="prize"
           :style="{
-              transform: `translate(-50%, -50%)
-                rotate(${index * (360 / wheelStore.prizes.length) + (180 / wheelStore.prizes.length)}deg)
-                translateY(-32vw)
-                `
-            }"
+            transform: `
+              translate(-50%, -50%)
+              rotate(${index * (360 / displayPrizes.length) + (180 / displayPrizes.length)}deg)
+              translateY(-32vw)
+            `
+          }"
         >
           {{ item }}
         </view>
-
-        <!-- 中间按钮 -->
-        
       </view>
+
+      <!-- 中间按钮 -->
       <view class="center-button" @tap="spin">
         <view class="pointer"></view>
-          GO
+        GO
       </view>
-      
+
     </view>
+
+    <!-- 底部操作 -->
     <view class="footer">
-        <uni-icons
+      <uni-icons
         type="gear"
-        color=""
         size="45"
-        @tap="uni.navigateTo({url:`/pagesWheel/wheelSetting/index`})"
+        @tap="Go('/pagesWheel/wheelSetting/index')"
       />
+
       <uni-icons
         type="loop"
-        color=""
         size="45"
+        @tap="change"
       />
+
       <uni-icons
         type="compose"
-        color=""
         size="45"
-        @tap="uni.navigateTo({url:`/pagesWheel/wheelEdit/index`})"
-
+        @tap="Go('/pagesWheel/wheelEdit/index')"
       />
-      </view>
+    </view>
+
+    <!-- 防止旋转时重复点击 -->
+    <view v-if="isSpinning" class="spin-mask"></view>
+
   </view>
-  <view v-if="isSpinning" class="spin-mask"></view>
 </template>
 
 
-<script setup>
-import { computed, ref } from 'vue'
+<script setup lang="ts">
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { useWheelStore } from '@/store/modules/wheel'
 
 const wheelStore = useWheelStore()
+// 转盘当前显示的顺序单独保存，避免打乱时改动编辑页保存的原顺序
+const displayPrizes = ref(wheelStore.currentWheel.prizes.slice())
+
+watch(
+  () => wheelStore.currentWheel.prizes,
+  (prizes) => {
+    displayPrizes.value = prizes.slice()
+    updateDisplayIndex()
+  }
+)
 
 // 预设 12 种颜色
 const colors = [
@@ -83,16 +109,22 @@ const colorOrder = [
 ]
 
 // 根据奖品索引获取颜色
-function getPrizeColor(index) {
+const getPrizeColor = (index: number) => {
   const colorIndex = colorOrder[index % colorOrder.length]
   return colors[colorIndex]
 }
 
 // 根据奖品数量动态生成转盘背景
 const wheelBackground = computed(() => {
-  const one = 360 / wheelStore.prizes.length
+  const prizes = displayPrizes.value
 
-  const everybig = wheelStore.prizes.map((item, index) => {
+  if (!prizes.length) {
+    return '#eeeeee'
+  }
+
+  const one = 360 / prizes.length
+
+  const everybig = prizes.map((item, index) => {
     const start = one * index
     const end = one * (index + 1)
 
@@ -102,145 +134,356 @@ const wheelBackground = computed(() => {
   return `conic-gradient(${everybig.join(', ')})`
 })
 
-// 转盘旋转角度
+// 转盘当前旋转角度
 const rotate = ref(0)
 
 // 是否正在旋转
 const isSpinning = ref(false)
 
-// 点击开始抽奖
-function spin() {
+// 最终中奖索引
+const index = ref(0)
 
-  // 如果正在旋转，就不允许再次点击
+// 当前指针经过的奖项索引
+const displayIndex = ref(0)
+
+// 保存动画定时器，方便清理
+let animationTimer: ReturnType<typeof setTimeout> | null = null
+
+
+// 根据转盘实时角度计算指针指向哪个奖项
+const updateDisplayIndex = () => {
+  const prizes = displayPrizes.value
+
+  if (!prizes.length) return
+
+  const anglePerPrize = 360 / prizes.length
+
+  // 将旋转角度转换为 0 ~ 360
+  const currentAngle = ((rotate.value % 360) + 360) % 360
+
+  // 指针固定在顶部，所以需要反向计算
+  const pointerAngle = (360 - currentAngle) % 360
+
+  // 得到当前指针对应的奖项索引
+  displayIndex.value = Math.floor(pointerAngle / anglePerPrize)
+}
+
+
+// cubic-bezier 缓动函数
+// 对应 CSS：cubic-bezier(0.12, 0.75, 0.15, 1)
+const cubicBezier = (progress: number) => {
+  const x1 = 0.12
+  const y1 = 0.75
+  const x2 = 0.15
+  const y2 = 1
+
+  // 根据 t 计算贝塞尔曲线的坐标
+  const bezier = (t: number, a: number, b: number) => {
+    const c = 3 * a
+    const d = 3 * (b - a) - c
+    const e = 1 - c - d
+
+    return ((e * t + d) * t + c) * t
+  }
+
+  // 根据 x 找到对应的 t
+  let low = 0
+  let high = 1
+  let t = progress
+
+  // 二分法求解
+  for (let i = 0; i < 20; i++) {
+    t = (low + high) / 2
+
+    const x = bezier(t, x1, x2)
+
+    if (x < progress) {
+      low = t
+    } else {
+      high = t
+    }
+  }
+
+  // 根据 t 得到 y
+  return bezier(t, y1, y2)
+}
+
+
+// 执行转盘动画
+const startAnimation = (
+  startAngle: number,
+  endAngle: number,
+  duration: number
+) => {
+  return new Promise<void>((resolve) => {
+    const startTime = Date.now()
+
+    const animate = () => {
+      const elapsed = Date.now() - startTime
+
+      // 动画进度 0 ~ 1
+      const progress = Math.min(elapsed / duration, 1)
+
+      // 使用缓动曲线计算当前动画进度
+      const easedProgress = cubicBezier(progress)
+
+      // 更新转盘实时角度
+      rotate.value =
+        startAngle + (endAngle - startAngle) * easedProgress
+
+      // 根据当前真实角度更新奖项
+      updateDisplayIndex()
+
+      // 动画结束
+      if (progress >= 1) {
+        rotate.value = endAngle
+
+        // 确保最终显示中奖奖项
+        displayIndex.value = index.value
+
+        resolve()
+        return
+      }
+
+      // 下一帧继续执行
+      animationTimer = setTimeout(animate, 16)
+    }
+
+    animate()
+  })
+}
+
+
+// 点击开始抽奖
+const spin = async () => {
+
+  // 正在旋转时不允许再次点击
   if (isSpinning.value) {
     return
   }
 
-  // 开始旋转
+  const prizes = displayPrizes.value.slice()
+
+  // 没有奖项时不允许抽奖
+  if (!prizes.length) {
+    uni.showToast({
+      title: '请先添加奖项',
+      icon: 'none'
+    })
+    return
+  }
+
+  // 获取旋转时间
+  const spinTime = Number(wheelStore.currentWheel.spinTime)
+
+  if (!Number.isFinite(spinTime) || spinTime <= 0) {
+    uni.showToast({
+      title: '旋转时间设置不正确',
+      icon: 'none'
+    })
+    return
+  }
+
   isSpinning.value = true
 
-  // 随机选择一个奖项
-  const index = Math.floor(Math.random() * wheelStore.prizes.length)
+  // 随机选择最终中奖索引
+  index.value = Math.floor(Math.random() * prizes.length)
 
   // 每个奖项占据的角度
-  const anglePerPrize = 360 / wheelStore.prizes.length
+  const anglePerPrize = 360 / prizes.length
 
-  // 计算中奖区域的中心角度
-  const prizeCenterAngle = index * anglePerPrize + anglePerPrize / 2
+  // 中奖区域的中心角度
+  const prizeCenterAngle =
+    index.value * anglePerPrize + anglePerPrize / 2
 
-  // 当前圆盘角度
-  const currentAngle = rotate.value % 360
+  // 当前转盘角度
+  const currentAngle = ((rotate.value % 360) + 360) % 360
 
   // 计算需要补转的角度
-  const alignAngle = (
-    360 - (prizeCenterAngle + currentAngle) % 360
-  ) % 360
+  const alignAngle =
+    (360 - (prizeCenterAngle + currentAngle) % 360) % 360
 
-  // 再转5圈，然后对准中奖区域
-  rotate.value += 5 * 360 + alignAngle
+  // 起始角度
+  const startAngle = rotate.value
 
-  // 等待动画结束
-  setTimeout(() => {
+  // 再转 5 圈，然后停在中奖区域中心
+  const endAngle = startAngle + 5 * 360 + alignAngle
 
-    isSpinning.value = false
+  try {
+    // 开始动画，等待动画结束
+    await startAnimation(
+      startAngle,
+      endAngle,
+      spinTime * 1000
+    )
 
     // 显示中奖结果
     uni.showModal({
       title: '抽奖结果',
-      content: `恭喜你获得：${wheelStore.prizes[index]}`,
+      content: `恭喜你获得：${prizes[index.value]}`,
       showCancel: false
     })
 
-  }, wheelStore.spinTime * 1000)
+  } finally {
+    isSpinning.value = false
+    animationTimer = null
+  }
 }
+
+// 随机更换奖项位置
+const change = () => {
+  if (isSpinning.value) return
+
+  const prizes = displayPrizes.value.slice()
+
+  // 随机交换奖项位置
+  for (let i = prizes.length - 1; i > 0; i--) {
+    const randomIndex = Math.floor(Math.random() * (i + 1))
+
+    ;[prizes[i], prizes[randomIndex]] = [
+      prizes[randomIndex],
+      prizes[i]
+    ]
+  }
+
+  // 只更新当前显示顺序，不覆盖原始奖项顺序
+  displayPrizes.value = prizes
+
+  // 根据当前指针位置刷新奖项文字
+  updateDisplayIndex()
+  displayIndex.value=999
+}
+
+// 下拉刷新时恢复编辑页保存的原始顺序
+const restorePrizeOrder = () => {
+  if (isSpinning.value) return
+
+  displayPrizes.value = wheelStore.currentWheel.prizes.slice()
+  updateDisplayIndex()
+}
+
+defineExpose({
+  restorePrizeOrder,
+})
+
+// 页面销毁时清理动画
+onUnmounted(() => {
+  if (animationTimer) {
+    clearTimeout(animationTimer)
+    animationTimer = null
+  }
+})
+
+const Go = (setUrl:string)=>{
+  uni.navigateTo({
+    url: setUrl
+  })
+}
+
 </script>
 
 
 <style lang="scss" scoped>
-.page{
-     min-height: 100vh;
-     background: #fff5e9;
-     .wheel-container{
-        width: 100vw;
-        height: 100vw;
-        background-color: pink;
-        position:relative;
-        .wheel{
-            width: 86%;
-            height: 86%;
-            background-color: red;
-            border-radius: 50%;
-            position: absolute;
-            left: 7%;
-            top: 7%;
-            border: 6rpx solid #ffb52e;
-            box-sizing: border-box;
-             transition: transform 5s cubic-bezier(0.12, 0.75, 0.15, 1);
-            .prize{
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                width: 200rpx;
-                text-align: center;
-                font-size: 90%;
-                font-weight: bold;
-                color: #fff;
-            }
-            
-        }
-        .center-button {
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                            
-                width: 150rpx;
-                height: 150rpx;
-                            
-                border-radius: 50%;
-                background: #fff;
-                border: 10rpx solid #ffb52e;
-                            
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                            
-                color: #ff7043;
-                font-size: 50rpx;
-                font-weight: bold;
-                z-index: 2;
-                }
-                
-        .pointer {
-             position: absolute;
-             top: -49rpx;
-             left: 50%;
-             transform: translateX(-50%);
-             z-index: 3;
-                    
-             width: 0;
-             height: 0;
-                    
-             border-left: 13px solid transparent;
-             border-right: 13px solid transparent;
-             border-bottom: 22px solid #ffb52e;
-            }
-     }
-     .footer{
-      width: 100%;
-      display: flex;
-      justify-content: space-around;
-      padding: 30rpx;
-      box-sizing: border-box;
-      uni-icons{
-        padding: 30rpx;
-        height: 100%;
-        background-color: #e0d7d7;
-        border-radius: 50%;
+.page {
+  min-height: 100vh;
+  background: #fff5e9;
 
+  .wheel-container {
+    width: 100vw;
+    height: 100vw;
+    position: relative;
+
+    .current-prize {
+      position: absolute;
+      top: 30rpx;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      font-size: 32rpx;
+      font-weight: bold;
+      color: #ff7043;
+    }
+
+    .wheel {
+      width: 86%;
+      height: 86%;
+      background-color: red;
+      border-radius: 50%;
+      position: absolute;
+      left: 7%;
+      top: 14%;
+      border: 6rpx solid #ffb52e;
+      box-sizing: border-box;
+
+      // 注意：这里不再设置 transition
+      // 现在由 JS 控制每一帧的旋转角度
+
+      .prize {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 200rpx;
+        text-align: center;
+        font-size: 90%;
+        font-weight: bold;
+        color: #fff;
       }
-     }
+    }
+
+    .center-button {
+      position: absolute;
+      left: 50%;
+      top: 57%;
+      transform: translate(-50%, -50%);
+
+      width: 150rpx;
+      height: 150rpx;
+
+      border-radius: 50%;
+      background: #fff;
+      border: 10rpx solid #ffb52e;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      color: #ff7043;
+      font-size: 50rpx;
+      font-weight: bold;
+      z-index: 2;
+    }
+
+    .pointer {
+      position: absolute;
+      top: -49rpx;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+
+      width: 0;
+      height: 0;
+
+      border-left: 13px solid transparent;
+      border-right: 13px solid transparent;
+      border-bottom: 22px solid #ffb52e;
+    }
+  }
+
+  .footer {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    padding: 30rpx;
+    box-sizing: border-box;
+    uni-icons {
+      padding: 30rpx;
+      height: 100%;
+      background-color: #e0d7d7;
+      border-radius: 50%;
+    }
+  }
 }
+
 .spin-mask {
   position: fixed;
   left: 0;

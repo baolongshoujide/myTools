@@ -72,9 +72,9 @@
     </Item>
 
     <text class="hint">至少保留两个奖项；保存后同步到转盘。</text>
-    <view class="prize-row" style="gap: 30rpx;">
-      <button class="button" style="flex: 1;" @tap="reset">重置</button>
-    <button class="button" style="flex:2.5;" @tap="save">保存修改</button>
+    <view class="bottom-buttons">
+      <button class="button reset" @tap="reset">重置</button>
+      <button class="button save" @tap="save">保存修改</button>
     </view>
   </view>
  <uni-popup
@@ -100,6 +100,7 @@
 
 <script setup lang="ts">
 import { useWheelStore } from '@/store/modules/wheel'
+import type { Wheel } from '@/types/wheel'
 import Item from './components/Item.vue'
 import MyInput from './components/MyInput.vue'
 import { computed, ref } from 'vue'
@@ -109,21 +110,21 @@ const wheelStore = useWheelStore()
 const popup = ref()
 
 // 保存进入编辑页面时的数据
-const backupWheel = ref({
+const backupWheel = ref<Wheel>({
+  id: '1',
   name: '',
   spinTime: 5,
-  prizes: [] as string[],
+  prizes: [],
 })
 
 // 页面加载时备份
 onLoad(() => {
-  backupWheel.value = JSON.parse(
-    JSON.stringify({
-      name: wheelStore.name,
-      spinTime: wheelStore.spinTime,
-      prizes: wheelStore.prizes,
-    })
-  )
+  backupWheel.value = {
+    id: wheelStore.currentWheel.id,
+    name: wheelStore.currentWheel.name,
+    spinTime: wheelStore.currentWheel.spinTime,
+    prizes: wheelStore.currentWheel.prizes.slice(),
+  }
 })
 
   const more = ref('')
@@ -153,7 +154,9 @@ onLoad(() => {
       }
     }
     SonAddMore(word, son)
-    backupWheel.value.prizes.push(...son)
+    son.forEach((item) => {
+      backupWheel.value.prizes.push(item)
+    })
     more.value = ''
   }
 
@@ -165,15 +168,16 @@ onLoad(() => {
 
   const reset = ()=>{
      backupWheel.value = {
-    name: wheelStore.name,
-    spinTime: wheelStore.spinTime,
-    prizes: [...wheelStore.prizes]
+    id: wheelStore.currentWheel.id,
+    name: wheelStore.currentWheel.name,
+    spinTime: wheelStore.currentWheel.spinTime,
+    prizes: wheelStore.currentWheel.prizes.slice(),
   }
   more.value = ''
   }
 
 const save = () => {
-  wheelStore.addWheel(backupWheel.value)
+  wheelStore.updateWheel(backupWheel.value)
   uni.navigateBack()
 }
 </script>
@@ -184,7 +188,8 @@ const save = () => {
   box-sizing: border-box;
   padding: 24rpx;
   background: #fff5e9;
-
+  padding-bottom: 140rpx;
+  box-sizing: border-box;
   .prize-heading,
   .prize-row {
     display: flex;
@@ -244,13 +249,31 @@ const save = () => {
     color: #999;
     font-size: 24rpx;
   }
+  .bottom-buttons {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  gap: 30rpx;
+  padding: 20rpx 30rpx;
+  box-sizing: border-box;
+  background-color: #fff;
+  z-index: 99;
 
-  .save-button {
-    margin-top: 32rpx;
-    background: #1e5684;
-    color: #fff;
+  .button {
+    margin: 0;
   }
 
+  .reset {
+    flex: 1;
+    background-color: red;
+  }
+
+  .save {
+    flex: 2.5;
+  }
+}
   // 穿透修改 uni-group 内部样式
   :deep(.uni-group__content) {
     padding: 0;

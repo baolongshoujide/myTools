@@ -15,7 +15,8 @@
 		{
 			"path": "pages/function/index",
 			"style": {
-				"navigationBarTitleText": "功能"
+				"navigationBarTitleText": "",
+				"enablePullDownRefresh": true
 			}
 		}
 	],
