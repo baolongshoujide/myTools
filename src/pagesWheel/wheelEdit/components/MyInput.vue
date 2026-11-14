@@ -16,20 +16,17 @@
 </template>
 
 <script setup lang="ts">
+import type { WheelInputEmits, WheelInputProps, WheelInputValue } from '@/types/wheel'
+
 defineOptions({ inheritAttrs: false })
 
-const props = withDefaults(defineProps<{
-  modelValue?: string | number | null
-  placeholderStyle?: string
-}>(), {
+const props = withDefaults(defineProps<WheelInputProps>(), {
   placeholderStyle: 'font-size: 18px;',
 })
 
-const emit = defineEmits<{
-  (event: 'update:modelValue', value: string | number): void
-}>()
+const emit = defineEmits<WheelInputEmits>()
 
-const onUpdateModelValue = (value: string | number) => {
+const onUpdateModelValue = (value: WheelInputValue) => {
   emit('update:modelValue', value)
 }
 

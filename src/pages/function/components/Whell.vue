@@ -25,13 +25,11 @@
           class="prize"
           :style="{
             transform: `
-              translate(-50%, -50%)
               rotate(${index * (360 / displayPrizes.length) + (180 / displayPrizes.length)}deg)
-              translateY(-32vw)
             `
           }"
         >
-          {{ item }}
+          <text class="prize-label">{{ item }}</text>
         </view>
       </view>
 
@@ -71,12 +69,13 @@
     <view v-if="isSpinning" class="spin-mask"></view>
 
   </view>
-</template>>
+</template>
 
 
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useWheelStore } from '@/store/modules/wheel'
+import type { WheelAnimationTimer } from '@/types/wheel'
 
 const wheelStore = useWheelStore()
 // 转盘当前显示的顺序单独保存，避免打乱时改动编辑页保存的原顺序
@@ -152,7 +151,7 @@ const index = ref(0)
 const displayIndex = ref(0)
 
 // 保存动画定时器，方便清理
-let animationTimer: ReturnType<typeof setTimeout> | null = null
+let animationTimer: WheelAnimationTimer = null
 
 
 // 根据转盘实时角度计算指针指向哪个奖项
@@ -390,7 +389,7 @@ const Go = (setUrl:string)=>{
 
 <style lang="scss" scoped>
 .page {
-  min-height: 100vh;
+  width: 100%;
   background: #fff5e9;
 
   // 当前奖项标题
@@ -409,8 +408,10 @@ const Go = (setUrl:string)=>{
 
   // 正方形转盘容器
   .wheel-stage {
-    width: 86vw;
-    height: 86vw;
+    width: 100%;
+    height: 0;
+    // 百分比内边距根据容器宽度计算，使转盘保持正方形
+    padding-bottom: 100%;
     margin: 20rpx auto 0;
     position: relative;
 
@@ -431,15 +432,24 @@ const Go = (setUrl:string)=>{
 
       .prize {
         position: absolute;
-        left: 50%;
-        top: 50%;
+        left: 0;
+        top: 0;
 
-        width: 200rpx;
+        width: 100%;
+        height: 100%;
         text-align: center;
 
         font-size: 90%;
         font-weight: bold;
         color: #fff;
+
+        .prize-label {
+          position: absolute;
+          left: 50%;
+          top: 13%;
+          width: 200rpx;
+          transform: translate(-50%, -50%);
+        }
       }
     }
 

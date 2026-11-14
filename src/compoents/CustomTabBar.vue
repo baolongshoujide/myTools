@@ -14,7 +14,7 @@
     </view>
 
     <!-- 中间加号 -->
-    <view class="tab-item plus-item" @touchstart="isLong = false" @longpress="goHome">
+    <view class="tab-item plus-item" v-if="!isActive('/pages/index/index')" @touchstart="isLong = false" @longpress="goHome">
        <view class="plus-circle">
           <uni-icons
             v-if="isLong"

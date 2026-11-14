@@ -1,5 +1,5 @@
 <template>
- <Layout>
+ <Layout class="wheel-layout">
   <Whell ref="wheelRef"></Whell>
   
  </Layout>
@@ -28,4 +28,8 @@ onShow(()=>{
 
 </script>
 
-<style scoped></style>
+<style scoped>
+.wheel-layout {
+  background-color: #fff5e9;
+}
+</style>
