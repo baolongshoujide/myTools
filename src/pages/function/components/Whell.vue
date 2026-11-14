@@ -1,12 +1,14 @@
 
 <template>
   <view class="page">
-    <view class="wheel-container">
 
-      <!-- 当前指针经过的奖项 -->
-      <view class="current-prize">
-        {{ displayPrizes[displayIndex] || '' }}
-      </view>
+    <!-- 当前指针经过的奖项：单独占一行 -->
+    <view class="current-prize">
+      {{ displayPrizes[displayIndex] || '' }}
+    </view>
+
+    <!-- 正方形转盘区域 -->
+    <view class="wheel-stage">
 
       <!-- 圆盘 -->
       <view
@@ -39,6 +41,9 @@
         GO
       </view>
 
+      <!-- 指针：独立于中心按钮 -->
+      
+
     </view>
 
     <!-- 底部操作 -->
@@ -66,7 +71,7 @@
     <view v-if="isSpinning" class="spin-mask"></view>
 
   </view>
-</template>
+</template>>
 
 
 <script setup lang="ts">
@@ -388,52 +393,61 @@ const Go = (setUrl:string)=>{
   min-height: 100vh;
   background: #fff5e9;
 
-  .wheel-container {
-    width: 100vw;
-    height: 100vw;
+  // 当前奖项标题
+  .current-prize {
+    width: 100%;
+    height: 100rpx;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    font-size: 32rpx;
+    font-weight: bold;
+    color: #ff7043;
+  }
+
+  // 正方形转盘容器
+  .wheel-stage {
+    width: 86vw;
+    height: 86vw;
+    margin: 20rpx auto 0;
     position: relative;
 
-    .current-prize {
-      position: absolute;
-      top: 30rpx;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 5;
-      font-size: 32rpx;
-      font-weight: bold;
-      color: #ff7043;
-    }
-
+    // 圆盘
     .wheel {
-      width: 86%;
-      height: 86%;
-      background-color: red;
-      border-radius: 50%;
+      width: 100%;
+      height: 100%;
+
       position: absolute;
-      left: 7%;
-      top: 14%;
+      left: 0;
+      top: 0;
+
+      border-radius: 50%;
       border: 6rpx solid #ffb52e;
       box-sizing: border-box;
 
-      // 注意：这里不再设置 transition
-      // 现在由 JS 控制每一帧的旋转角度
+      // JS 控制旋转，不设置 transition
 
       .prize {
         position: absolute;
         left: 50%;
         top: 50%;
+
         width: 200rpx;
         text-align: center;
+
         font-size: 90%;
         font-weight: bold;
         color: #fff;
       }
     }
 
+    // 中心按钮
     .center-button {
       position: absolute;
       left: 50%;
-      top: 57%;
+      top: 50%;
       transform: translate(-50%, -50%);
 
       width: 150rpx;
@@ -442,6 +456,7 @@ const Go = (setUrl:string)=>{
       border-radius: 50%;
       background: #fff;
       border: 10rpx solid #ffb52e;
+      box-sizing: border-box;
 
       display: flex;
       justify-content: center;
@@ -453,9 +468,10 @@ const Go = (setUrl:string)=>{
       z-index: 2;
     }
 
+    // 顶部指针
     .pointer {
       position: absolute;
-      top: -49rpx;
+      top: -47rpx;
       left: 50%;
       transform: translateX(-50%);
       z-index: 3;
@@ -463,27 +479,33 @@ const Go = (setUrl:string)=>{
       width: 0;
       height: 0;
 
+      // 三角形尖端朝下
       border-left: 13px solid transparent;
       border-right: 13px solid transparent;
       border-bottom: 22px solid #ffb52e;
     }
   }
 
+  // 底部操作
   .footer {
     width: 100%;
+
     display: flex;
     justify-content: space-around;
+    align-items: center;
+
     padding: 30rpx;
     box-sizing: border-box;
+
     uni-icons {
       padding: 30rpx;
-      height: 100%;
       background-color: #e0d7d7;
       border-radius: 50%;
     }
   }
 }
 
+// 防止旋转时重复点击
 .spin-mask {
   position: fixed;
   left: 0;

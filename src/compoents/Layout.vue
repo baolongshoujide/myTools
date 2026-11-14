@@ -1,6 +1,11 @@
 <template>
-        <slot></slot>
-        <CustomTabBar></CustomTabBar>
+        <view class="layout">
+          <view class="content">
+            <slot></slot>
+          </view>
+
+          <CustomTabBar />
+        </view>
 </template>
     
 <script setup lang='ts'>
@@ -8,12 +13,11 @@
 </script>
     
 <style lang="scss">
-    .layout {
+  .layout {
   min-height: 100vh;
-  position: relative;
 }
 
-.layout-content {
-  padding-bottom: 140rpx;
+.content {
+  padding-bottom: 220rpx;
 }
 </style>

@@ -189,7 +189,6 @@ const save = () => {
   padding: 24rpx;
   background: #fff5e9;
   padding-bottom: 140rpx;
-  box-sizing: border-box;
   .prize-heading,
   .prize-row {
     display: flex;
@@ -226,11 +225,6 @@ const save = () => {
     .time-label {
       flex: 1;
     }
-  }
-
-  .add-button {
-    flex: none;
-    margin: 0 0 0 16rpx;
   }
 
   .prefix-icon {

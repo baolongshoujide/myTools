@@ -2,44 +2,76 @@
 <template>
   <view class="custom-tabbar">
     <!-- 首页 -->
-    <view class="tab-item" @click="goTab('/pages/index/index')">
-      <text class="tab-icon">⌂</text>
+    <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/index/index') }" @click="goTab('/pages/index/index')">
+      <uni-icons type="home" size="24" :color="isActive('/pages/index/index') ? '#2878ff' : '#888'" />
       <text>首页</text>
     </view>
 
     <!-- 功能 -->
-    <view class="tab-item" @click="goTab('/pages/function/index')">
-      <text class="tab-icon">▦</text>
+    <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/function/index') }" @click="goTab('/pages/function/index')">
+      <uni-icons type="bars" size="24" :color="isActive('/pages/function/index') ? '#2878ff' : '#888'" />
       <text>功能</text>
     </view>
 
     <!-- 中间加号 -->
-    <view class="tab-item plus-item" @click="openPublish">
-      <view class="plus-circle">
-        <text class="plus">＋</text>
-      </view>
+    <view class="tab-item plus-item" @touchstart="isLong = false" @longpress="goHome">
+       <view class="plus-circle">
+          <uni-icons
+            v-if="isLong"
+            type="home"
+            size="30"
+            color="#fff"
+          />
+       <text v-else class="plus">＋</text>
+       </view>
     </view>
-
-    <!-- 我的 -->
-    <view class="tab-item" @click="goTab('/pages/my/index')">
-      <text class="tab-icon">♙</text>
-      <text>我的</text>
-    </view>
-    <view class="tab-item" @click="goTab('/pages/my/index')">
-      <text class="tab-icon">♙</text>
+    <!-- 列表 -->
+    <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/list/index') }" @click="goTab('/pages/list/index')">
+  <uni-icons
+    type="list"
+    size="24"
+    :color="isActive('/pages/list/index') ? '#2878ff' : '#888'"
+  />
+  <text>列表</text>
+</view>
+    <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/my/index') }" @click="goTab('/pages/my/index')">
+      <uni-icons type="person" size="24" :color="isActive('/pages/my/index') ? '#2878ff' : '#888'" />
       <text>我的</text>
     </view>
   </view>
 </template>
 
 <script setup>
+import { onShow } from '@dcloudio/uni-app';
+import { onMounted, ref } from 'vue';
+
+const currentRoute = ref('')
+
+const updateCurrentRoute = () => {
+  const pages = getCurrentPages()
+  const currentPage = pages[pages.length - 1]
+  currentRoute.value = currentPage ? '/' + currentPage.route : ''
+}
+
+const isActive = (url) => {
+  return currentRoute.value === url
+}
+
+onMounted(updateCurrentRoute)
+onShow(updateCurrentRoute)
+
 const goTab = (url) => {
+  if (isActive(url)) return
   uni.redirectTo({ url });
 };
 
-const openPublish = () => {
- 
-};
+const isLong = ref()
+const goHome = ()=>{
+  isLong.value = true
+  uni.reLaunch({
+    url: '/pages/index/index'
+  })
+}
 </script>
 
 <style lang="scss" scoped>
@@ -68,9 +100,9 @@ const openPublish = () => {
     gap: 5rpx;
   }
 
-  .tab-icon {
-    font-size: 42rpx;
-    line-height: 1.2;
+  .tab-item-active {
+    color: #2878ff;
+    font-weight: bold;
   }
 
   .plus-item {
@@ -88,8 +120,12 @@ const openPublish = () => {
     margin-top: -65rpx;
     box-shadow: 0 5rpx 15rpx rgba(40, 120, 255, 0.3);
     border: 8rpx solid #fff;
-  }
+    transition: transform 0.15s ease;
 
+  }
+  .plus-item:active .plus-circle {
+      transform: scale(0.85);
+    }
   .plus {
     color: #fff;
     font-size: 65rpx;

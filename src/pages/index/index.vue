@@ -13,7 +13,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
 import Items from './components/Items.vue';
 import Layout from '@/compoents/Layout.vue';
 const list = [
@@ -21,7 +20,17 @@ const list = [
   {title:'连点器',image:'/static/轮盘5.png'},
   {title:'幸运转盘',image:'/static/轮盘5.png'},
   {title:'幸运转盘',image:'/static/轮盘5.png'},
-  {title:'幸运转盘',image:'/static/轮盘5.png'}
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'连点器',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'连点器',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
+  {title:'幸运转盘',image:'/static/轮盘5.png'},
 ]
 </script>
 
