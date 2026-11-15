@@ -14,7 +14,7 @@
     </view>
 
     <!-- 中间加号 -->
-    <view class="tab-item plus-item" v-if="!isActive('/pages/index/index')" @touchstart="isLong = false" @longpress="goHome">
+    <view class="tab-item plus-item" @tap="openAddMenu" @touchstart="isLong = false" @longpress="goHome">
        <view class="plus-circle">
           <uni-icons
             v-if="isLong"
@@ -44,21 +44,24 @@
 <script setup>
 import { onShow } from '@dcloudio/uni-app';
 import { onMounted, ref } from 'vue';
+import { useWheelStore } from '@/store/modules/wheel';
 
-const currentRoute = ref('')
+const wheelStore = useWheelStore()
 
-const updateCurrentRoute = () => {
+const nowRoute = ref('')
+
+const updateNowRoute = () => {
   const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  currentRoute.value = currentPage ? '/' + currentPage.route : ''
+  const nowPage = pages[pages.length - 1]
+  nowRoute.value = nowPage ? '/' + nowPage.route : ''
 }
 
 const isActive = (url) => {
-  return currentRoute.value === url
+  return nowRoute.value === url
 }
 
-onMounted(updateCurrentRoute)
-onShow(updateCurrentRoute)
+onMounted(updateNowRoute)
+onShow(updateNowRoute)
 
 const goTab = (url) => {
   if (isActive(url)) return
@@ -66,6 +69,59 @@ const goTab = (url) => {
 };
 
 const isLong = ref()
+const createWheel = () => {
+  uni.navigateTo({ url: '/pagesWheel/wheelEdit/index?mode=create' })
+}
+
+const addWheelPrize = () => {
+  const item = wheelStore.nowWheel
+  if (!item) {
+    uni.showToast({ title: '请先创建转盘', icon: 'none' })
+    return
+  }
+  const wheelId = item.id
+  uni.showModal({
+    title: '添加到「' + item.name + '」',
+    editable: true,
+    placeholderText: '请输入奖项名称',
+    success: (result) => {
+      if (!result.confirm) return
+      if (!wheelStore.addPrize(wheelId, result.content || '')) {
+        uni.showToast({ title: '请输入有效的奖项名称', icon: 'none' })
+        return
+      }
+      uni.showToast({ title: '奖项已添加', icon: 'success' })
+    },
+  })
+}
+
+// 加号根据当前页面分配操作。
+// 连点器页面做好后，在这里接入：功能页 → 添加单个操作，列表页 → 新建方案。
+const addActions = {
+  '/pages/list/index': createWheel,
+  '/pages/function/index': addWheelPrize,
+}
+
+const openAddMenu = () => {
+  if (isLong.value) return
+  updateNowRoute()
+  const action = addActions[nowRoute.value]
+  if (action) {
+    action()
+    return
+  }
+  uni.showActionSheet({
+    itemList: ['添加奖项', '新建转盘'],
+    success: (response) => {
+      if (response.tapIndex === 1) {
+        createWheel()
+        return
+      }
+      addWheelPrize()
+    },
+  })
+}
+
 const goHome = ()=>{
   isLong.value = true
   uni.reLaunch({

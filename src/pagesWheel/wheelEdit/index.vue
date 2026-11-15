@@ -74,7 +74,7 @@
     <text class="hint">至少保留两个奖项；保存后同步到转盘。</text>
     <view class="bottom-buttons">
       <button class="button reset" @tap="reset">重置</button>
-      <button class="button save" @tap="save">保存修改</button>
+      <button class="button save" @tap="save">{{ isCreating ? '创建转盘' : '保存修改' }}</button>
     </view>
   </view>
  <uni-popup
@@ -108,6 +108,7 @@ import { onLoad } from '@dcloudio/uni-app'
 
 const wheelStore = useWheelStore()
 const popup = ref()
+const isCreating = ref(false)
 
 // 保存进入编辑页面时的数据
 const backupWheel = ref<Wheel>({
@@ -118,12 +119,18 @@ const backupWheel = ref<Wheel>({
 })
 
 // 页面加载时备份
-onLoad(() => {
+onLoad((options) => {
+  isCreating.value = options?.mode === 'create'
+  if (isCreating.value) {
+    backupWheel.value = { id: '', name: '', spinTime: 5, prizes: ['', ''] }
+    uni.setNavigationBarTitle({ title: '新建转盘' })
+    return
+  }
   backupWheel.value = {
-    id: wheelStore.currentWheel.id,
-    name: wheelStore.currentWheel.name,
-    spinTime: wheelStore.currentWheel.spinTime,
-    prizes: wheelStore.currentWheel.prizes.slice(),
+    id: wheelStore.nowWheel.id,
+    name: wheelStore.nowWheel.name,
+    spinTime: wheelStore.nowWheel.spinTime,
+    prizes: wheelStore.nowWheel.prizes.slice(),
   }
 })
 
@@ -167,17 +174,39 @@ onLoad(() => {
   }
 
   const reset = ()=>{
+    if (isCreating.value) {
+      backupWheel.value = { id: '', name: '', spinTime: 5, prizes: ['', ''] }
+      more.value = ''
+      return
+    }
      backupWheel.value = {
-    id: wheelStore.currentWheel.id,
-    name: wheelStore.currentWheel.name,
-    spinTime: wheelStore.currentWheel.spinTime,
-    prizes: wheelStore.currentWheel.prizes.slice(),
+    id: wheelStore.nowWheel.id,
+    name: wheelStore.nowWheel.name,
+    spinTime: wheelStore.nowWheel.spinTime,
+    prizes: wheelStore.nowWheel.prizes.slice(),
   }
   more.value = ''
   }
 
 const save = () => {
-  wheelStore.updateWheel(backupWheel.value)
+  const data = backupWheel.value
+  if (!data.name.trim()) {
+    uni.showToast({ title: '请输入转盘名称', icon: 'none' })
+    return
+  }
+  if (data.prizes.length < 2 || data.prizes.some((item) => !item.trim())) {
+    uni.showToast({ title: '请填写至少两个非空奖项', icon: 'none' })
+    return
+  }
+  if (!Number.isFinite(data.spinTime) || data.spinTime < 1 || data.spinTime > 9) {
+    uni.showToast({ title: '旋转时间需为1到9秒', icon: 'none' })
+    return
+  }
+  if (isCreating.value) {
+    wheelStore.addWheel(data)
+  } else {
+    wheelStore.updateWheel(data)
+  }
   uni.navigateBack()
 }
 </script>

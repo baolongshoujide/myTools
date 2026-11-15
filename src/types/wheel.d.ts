@@ -5,6 +5,13 @@ export interface Wheel {
   prizes: string[]
 }
 
+export type WheelDraft = Omit<Wheel, 'id'>
+
+export interface WheelPressEvent {
+  touches?: { clientX: number; clientY: number }[]
+  changedTouches?: { clientX: number; clientY: number }[]
+}
+
 export type WheelAnimationTimer = ReturnType<typeof setTimeout> | null
 
 export type WheelInputValue = string | number

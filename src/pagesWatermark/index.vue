@@ -1,14 +1,19 @@
 <template>
   <view class="watermark-page">
-    <view class="intro">自动识别图片中的水印并修复背景</view>
+    <view class="intro">自动识别水印，也可以手动圈选后修复</view>
     <view class="image-panel" @tap="chooseImage">
       <image v-if="selectedImage" class="preview" :src="selectedImage" mode="aspectFit" />
       <view v-else class="empty">点击选择图片</view>
     </view>
     <button class="choose" :disabled="busy" @tap="chooseImage">{{ selectedImage ? '重新选择图片' : '选择图片' }}</button>
-    <button class="primary" :disabled="busy || !selectedImage" :loading="busy" @tap="startProcess">
-      {{ busy ? '正在处理，请稍候' : '自动去水印' }}
-    </button>
+    <view class="process-actions">
+      <button class="primary" :disabled="busy || !selectedImage" :loading="busy && processingMode === 'auto'" @tap="startAutomatic">
+        自动去水印
+      </button>
+      <button class="manual-button" :disabled="busy || !selectedImage" :loading="busy && processingMode === 'manual'" @tap="openSelector">
+        手动圈选
+      </button>
+    </view>
     <text v-if="message" class="message" :class="{ error: failed }">{{ message }}</text>
     <view v-if="resultImage" class="result-panel">
       <text class="result-title">{{ detected ? '修复结果' : '本次未执行修复，保留原图' }}</text>
@@ -17,9 +22,10 @@
         <button :class="{ active: !showOriginal }" @tap="showOriginal = false">处理后</button>
       </view>
       <image class="preview" :src="showOriginal ? processedOriginal : resultImage" mode="aspectFit" @tap="previewResult" />
-      <text class="hint">自动识别可能漏掉水印或误选正常内容，请对比后保存。</text>
+      <text class="hint">{{ processingMode === 'manual' ? '选区内容会重新生成，请检查背景和边缘后再保存。' : '自动识别可能漏掉水印或误选正常内容，请对比后保存。' }}</text>
       <button class="primary" :loading="saving" :disabled="saving" @tap="saveResult">保存到相册</button>
     </view>
+    <RegionSelector v-if="selectorOpen" :image="selectedImage" @cancel="selectorOpen = false" @confirm="repairSelection" />
   </view>
 </template>
 
@@ -27,7 +33,8 @@
 import { ref } from 'vue'
 import { onUnload } from '@dcloudio/uni-app'
 import { getJob, imageUrl, submitImage } from './api'
-import type { WatermarkPollTimer } from '@/types/watermark'
+import RegionSelector from './components/RegionSelector.vue'
+import type { WatermarkMode, WatermarkPollTimer, WatermarkRegion, WatermarkSubmitOptions } from '@/types/watermark'
 
 const selectedImage = ref('')
 const resultImage = ref('')
@@ -38,6 +45,8 @@ const failed = ref(false)
 const detected = ref(false)
 const saving = ref(false)
 const showOriginal = ref(false)
+const selectorOpen = ref(false)
+const processingMode = ref<WatermarkMode>('auto')
 let timer: WatermarkPollTimer
 let disposed = false
 
@@ -86,26 +95,36 @@ const pollJob = async (id: string, startedAt: number) => {
     }
     if (job.status === 'failed') throw new Error(job.message || '处理失败，请重试')
     if (Date.now() - startedAt > 10 * 60 * 1000) throw new Error('处理等待超时，请稍后重试')
-    message.value = job.status === 'queued' ? '图片已提交，正在等待处理' : '正在识别水印并修复背景'
+    message.value = job.status === 'queued' ? '图片已提交，正在等待处理' : processingMode.value === 'manual' ? '正在修复圈选区域' : '正在识别水印并修复背景'
     timer = setTimeout(() => pollJob(id, startedAt), 2000)
   } catch (error) {
     showError(error)
   }
 }
 
-const startProcess = async () => {
+const startProcess = async (options: WatermarkSubmitOptions) => {
   if (busy.value || !selectedImage.value) return
   busy.value = true
+  processingMode.value = options.mode
   failed.value = false
   resultImage.value = ''
   showOriginal.value = false
   message.value = '正在上传图片'
   try {
-    const job = await submitImage(selectedImage.value)
+    const job = await submitImage(selectedImage.value, options)
     if (!disposed) await pollJob(job.id, Date.now())
   } catch (error) {
     showError(error)
   }
+}
+
+const startAutomatic = () => { startProcess({ mode: 'auto' }) }
+const openSelector = () => {
+  if (!busy.value && selectedImage.value) selectorOpen.value = true
+}
+const repairSelection = (regions: WatermarkRegion[]) => {
+  selectorOpen.value = false
+  if (regions.length) startProcess({ mode: 'manual', regions })
 }
 
 const previewResult = () => {
@@ -187,6 +206,26 @@ button {
 .choose {
   background: white;
   color: #2878ff;
+}
+.process-actions {
+  display: flex;
+  gap: 20rpx;
+  margin-top: 24rpx;
+}
+.process-actions button {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12rpx;
+  margin: 0;
+  font-size: 28rpx;
+}
+.manual-button {
+  background: #eaf1ff;
+  color: #2878ff;
+}
+.manual-button[disabled] {
+  background: #e9edf4;
+  color: #a1adbf;
 }
 .message {
   display: block;

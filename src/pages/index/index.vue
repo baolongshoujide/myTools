@@ -31,8 +31,8 @@
       <view class="saved-wheel" hover-class="saved-wheel-pressed" @tap="openWheel">
         <view class="saved-icon"><uni-icons type="refresh" size="27" color="#2878ff" /></view>
         <view class="saved-details">
-          <text class="saved-name">{{ wheelStore.currentWheel.name || '未命名转盘' }}</text>
-          <text class="saved-meta">{{ wheelStore.currentWheel.prizes.length }} 个选项 · 旋转 {{ wheelStore.currentWheel.spinTime }} 秒</text>
+          <text class="saved-name">{{ wheelStore.nowWheel.name || '未命名转盘' }}</text>
+          <text class="saved-meta">{{ wheelStore.nowWheel.prizes.length }} 个选项 · 旋转 {{ wheelStore.nowWheel.spinTime }} 秒</text>
         </view>
         <uni-icons type="arrow-right" size="19" color="#9aa7ba" />
       </view>

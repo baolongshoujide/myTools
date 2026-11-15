@@ -4,35 +4,69 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Lock
 import time
+import json
+import asyncio
+import logging
+from contextlib import suppress
 from uuid import uuid4
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from PIL import UnidentifiedImageError, Image
 
 from pipeline import ROOT, WatermarkPipeline
+from manual_regions import validate_regions
+from retention import cleanup_outputs
 
 pipeline = WatermarkPipeline()
 executor = ThreadPoolExecutor(max_workers=1)
 jobs = {}
 lock = Lock()
 MAX_BYTES = 20 * 1024 * 1024
+CLEANUP_INTERVAL_SECONDS = 60
+
+
+def cleanup_expired_images():
+    with lock:
+        active = {key for key, item in jobs.items() if item["status"] in {"uploading", "queued", "processing"}}
+    try:
+        removed = cleanup_outputs(ROOT / "outputs", active)
+        with lock:
+            for key in removed:
+                jobs.pop(key, None)
+        if removed:
+            logging.getLogger(__name__).info("Deleted %s expired watermark tasks", len(removed))
+    except OSError:
+        logging.getLogger(__name__).exception("Watermark cleanup failed; will retry")
+
+
+async def cleanup_loop():
+    while True:
+        await asyncio.sleep(CLEANUP_INTERVAL_SECONDS)
+        await asyncio.to_thread(cleanup_expired_images)
 
 
 @asynccontextmanager
 async def lifespan(app):
-    yield
-    executor.shutdown(wait=True, cancel_futures=True)
+    await asyncio.to_thread(cleanup_expired_images)
+    cleanup_task = asyncio.create_task(cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+        executor.shutdown(wait=True, cancel_futures=True)
 
 
 app = FastAPI(title="Local watermark repair", lifespan=lifespan)
 
 
-def run_job(job_id, image_path, folder):
+def run_job(job_id, image_path, folder, manual_regions=None):
     with lock:
         jobs[job_id]["status"] = "processing"
     try:
-        report = pipeline.process(image_path, folder)
+        report = pipeline.process(image_path, folder, manual_regions=manual_regions)
         with lock:
             jobs[job_id].update(report)
     except Exception as error:
@@ -48,11 +82,25 @@ def health():
     return {
         "status": "ready", "device": pipeline.device,
         "modelsLoaded": pipeline.detector is not None and pipeline.inpainter is not None,
+        "manualSelection": True,
+        "repairModelLoaded": pipeline.inpainter is not None,
     }
 
 
 @app.post("/jobs", status_code=202)
-async def create_job(file: UploadFile):
+async def create_job(file: UploadFile, mode: str = Form("auto"), regions: str | None = Form(None)):
+    manual_regions = None
+    try:
+        if mode not in {"auto", "manual"}:
+            raise ValueError("不支持的处理模式")
+        if mode == "manual":
+            manual_regions = validate_regions(json.loads(regions or "null"))
+    except json.JSONDecodeError:
+        await file.close()
+        raise HTTPException(400, "选区格式不正确，请重新圈选")
+    except (ValueError, TypeError) as error:
+        await file.close()
+        raise HTTPException(400, str(error))
     job_id = uuid4().hex
     folder = ROOT / "outputs" / job_id
     folder.mkdir(parents=True)
@@ -65,7 +113,7 @@ async def create_job(file: UploadFile):
         for key in list(jobs):
             if time.time() - jobs[key]["createdAt"] > 86400:
                 del jobs[key]
-        jobs[job_id] = {"id": job_id, "status": "uploading", "createdAt": time.time()}
+        jobs[job_id] = {"id": job_id, "status": "uploading", "createdAt": time.time(), "mode": mode}
     try:
         size = 0
         with image_path.open("wb") as stream:
@@ -82,8 +130,8 @@ async def create_job(file: UploadFile):
             image.verify()
         with lock:
             jobs[job_id]["status"] = "queued"
-        executor.submit(run_job, job_id, image_path, folder)
-        return {"id": job_id, "status": "queued"}
+        executor.submit(run_job, job_id, image_path, folder, manual_regions)
+        return {"id": job_id, "status": "queued", "mode": mode}
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         with lock:
             jobs.pop(job_id, None)

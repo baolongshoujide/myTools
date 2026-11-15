@@ -22,7 +22,7 @@ onPullDownRefresh(() => {
 
 onShow(()=>{
   uni.setNavigationBarTitle({
-    title:wheelStore.currentWheel.name,
+    title:wheelStore.nowWheel.name,
   })
 })
 

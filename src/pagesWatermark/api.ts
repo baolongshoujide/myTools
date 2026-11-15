@@ -1,16 +1,39 @@
-import type { WatermarkJob } from '@/types/watermark'
+import type { WatermarkHealth, WatermarkJob, WatermarkSubmitOptions } from '@/types/watermark'
 
 // Local development only. Remote uniCloud integration will replace this transport.
 export const serviceUrl = (
   import.meta.env.VITE_WATERMARK_API_URL || 'http://127.0.0.1:8765'
 ).replace(/\/$/, '')
 
-export const submitImage = (filePath: string): Promise<WatermarkJob> => {
+const checkManualSupport = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    uni.request({
+      url: serviceUrl + '/health',
+      timeout: 10000,
+      success: (response) => {
+        const data = response.data as WatermarkHealth
+        if (response.statusCode !== 200 || !data?.manualSelection) {
+          reject(new Error('请先重启电脑端图片处理服务，再使用手动圈选'))
+          return
+        }
+        resolve()
+      },
+      fail: () => reject(new Error('暂时无法连接图片处理服务，请稍后再试')),
+    })
+  })
+}
+
+export const submitImage = async (filePath: string, options: WatermarkSubmitOptions = { mode: 'auto' }): Promise<WatermarkJob> => {
+  if (options.mode === 'manual') await checkManualSupport()
   return new Promise((resolve, reject) => {
     uni.uploadFile({
       url: serviceUrl + '/jobs',
       filePath,
       name: 'file',
+      formData: {
+        mode: options.mode,
+        regions: JSON.stringify(options.regions || []),
+      },
       timeout: 60000,
       success: (response) => {
         try {

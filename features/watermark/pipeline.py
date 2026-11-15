@@ -24,6 +24,7 @@ import torch
 from transformers import AutoProcessor, Florence2ForConditionalGeneration
 from remwm import detect_only
 from lama_inpaint.runtime import LamaInpaint
+from manual_regions import region_boxes
 
 MODEL_ID = "florence-community/Florence-2-base"
 MODEL_REVISION = "00921df66db728a9ceb750f5eca43e5c203a2051"
@@ -55,6 +56,9 @@ class WatermarkPipeline:
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 attn_implementation="eager", use_safetensors=True,
             ).eval().to(self.device)
+        self.prepare_inpainter()
+
+    def prepare_inpainter(self):
         if self.inpainter is None:
             print("Loading checksum-verified LaMA model...", flush=True)
             # Leave GPU memory for detection; i7 CPU runs the repair model.
@@ -80,7 +84,7 @@ class WatermarkPipeline:
         ))
         return confirmed, caption
 
-    def process(self, image_path, output_dir, max_edge=1600):
+    def process(self, image_path, output_dir, max_edge=1600, manual_regions=None):
         start = time.perf_counter()
         image_path = Path(image_path)
         if image_path.stat().st_size > 20 * 1024 * 1024:
@@ -93,18 +97,24 @@ class WatermarkPipeline:
             image = ImageOps.exif_transpose(source).convert("RGB")
         original_size = image.size
         image.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
-        self.prepare()
-        print("Detecting watermark regions...", flush=True)
-        with torch.inference_mode():
-            detections = detect_only(
-                image, self.detector, self.processor, self.device,
-                max_bbox_percent=85, detection_prompt="watermark",
-            )
+        manual = manual_regions is not None
+        detections = []
+        if manual:
+            boxes = region_boxes(manual_regions, image.width, image.height)
+            self.prepare_inpainter()
+        else:
+            boxes = []
+            self.prepare()
+            print("Detecting watermark regions...", flush=True)
+            with torch.inference_mode():
+                detections = detect_only(
+                    image, self.detector, self.processor, self.device,
+                    max_bbox_percent=85, detection_prompt="watermark",
+                )
         mask = Image.new("L", image.size, 0)
         draw = ImageDraw.Draw(mask)
         preview = image.copy()
         preview_draw = ImageDraw.Draw(preview)
-        boxes = []
         verification = []
         unverified_regions = 0
         for item in detections:
@@ -120,9 +130,11 @@ class WatermarkPipeline:
             if not confirmed:
                 unverified_regions += 1
                 continue
-            draw.rectangle((left, top, right, bottom), fill=255)
-            preview_draw.rectangle((left, top, right, bottom), outline="#ff4040", width=3)
             boxes.append([left, top, right, bottom])
+
+        for box in boxes:
+            draw.rectangle(box, fill=255)
+            preview_draw.rectangle(box, outline="#ff4040", width=3)
 
         if boxes:
             print(f"Repairing {len(boxes)} detected region(s)...", flush=True)
@@ -144,6 +156,7 @@ class WatermarkPipeline:
         comparison.paste(result, (image.width, 0))
         comparison.save(output_dir / "comparison.png")
         metadata = {
+            "mode": "manual" if manual else "auto",
             "status": "completed" if boxes else "no_watermark",
             "regions": len(boxes), "boxes": boxes,
             "skippedRegions": sum(not item["accepted"] for item in detections),

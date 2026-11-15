@@ -3,7 +3,7 @@
   <view class="page">
 
     <!-- 当前指针经过的奖项：单独占一行 -->
-    <view class="current-prize">
+    <view class="now-prize">
       {{ displayPrizes[displayIndex] || '' }}
     </view>
 
@@ -13,6 +13,7 @@
       <!-- 圆盘 -->
       <view
         class="wheel"
+        @longpress.stop="deletePrizeAtPosition"
         :style="{
           background: wheelBackground,
           transform: `rotate(${rotate}deg)`
@@ -73,16 +74,19 @@
 
 
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from 'vue'
+import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useWheelStore } from '@/store/modules/wheel'
-import type { WheelAnimationTimer } from '@/types/wheel'
+import type { WheelAnimationTimer, WheelPressEvent } from '@/types/wheel'
+import { getPrizeIndex } from '../wheelGeometry'
 
 const wheelStore = useWheelStore()
+const instance = getCurrentInstance()
+const deleteDialogOpen = ref(false)
 // 转盘当前显示的顺序单独保存，避免打乱时改动编辑页保存的原顺序
-const displayPrizes = ref(wheelStore.currentWheel.prizes.slice())
+const displayPrizes = ref(wheelStore.nowWheel.prizes.slice())
 
 watch(
-  () => wheelStore.currentWheel.prizes,
+  () => wheelStore.nowWheel.prizes,
   (prizes) => {
     displayPrizes.value = prizes.slice()
     updateDisplayIndex()
@@ -153,6 +157,51 @@ const displayIndex = ref(0)
 // 保存动画定时器，方便清理
 let animationTimer: WheelAnimationTimer = null
 
+const deletePrizeAtPosition = (event: WheelPressEvent) => {
+  if (isSpinning.value || deleteDialogOpen.value || !instance?.proxy) return
+  if (displayPrizes.value.length <= 2) {
+    uni.showToast({ title: '至少保留两个奖项', icon: 'none' })
+    return
+  }
+  const touch = event.touches?.[0] || event.changedTouches?.[0]
+  if (!touch) return
+  uni.createSelectorQuery().in(instance.proxy).select('.wheel-stage').boundingClientRect((rect) => {
+    if (!rect || Array.isArray(rect) || isSpinning.value || deleteDialogOpen.value) return
+    if (typeof rect.left !== 'number' || typeof rect.top !== 'number' || typeof rect.width !== 'number' || rect.width <= 0) return
+    const prizeIndex = getPrizeIndex(touch.clientX - rect.left, touch.clientY - rect.top, rect.width, rotate.value, displayPrizes.value.length)
+    if (prizeIndex < 0) return
+    const name = displayPrizes.value[prizeIndex]
+    const wheel = wheelStore.nowWheel
+    const savedPrizes = wheel.prizes
+    // 显示顺序可能已打乱，按名称找到存档中的对应奖项；同名奖项只删一个。
+    const savedIndex = savedPrizes.indexOf(name)
+    if (savedIndex < 0) return
+    const remaining = displayPrizes.value.slice()
+    remaining.splice(prizeIndex, 1)
+    deleteDialogOpen.value = true
+    uni.showModal({
+      title: '删除奖项',
+      content: '确定删除「' + name + '」吗？',
+      confirmText: '删除',
+      confirmColor: '#e54d42',
+      success: async (result) => {
+        if (!result.confirm || isSpinning.value) return
+        if (wheelStore.nowWheel.id !== wheel.id || wheelStore.nowWheel.prizes !== savedPrizes) {
+          uni.showToast({ title: '转盘已更新，请重新长按', icon: 'none' })
+          return
+        }
+        if (!wheelStore.removePrize(wheel.id, savedIndex)) return
+        // 等待 store 的监听更新完毕，再保留剩余奖项当前的显示顺序。
+        await nextTick()
+        displayPrizes.value = remaining
+        updateDisplayIndex()
+        uni.showToast({ title: '奖项已删除', icon: 'success' })
+      },
+      complete: () => { deleteDialogOpen.value = false },
+    })
+  }).exec()
+}
+
 
 // 根据转盘实时角度计算指针指向哪个奖项
 const updateDisplayIndex = () => {
@@ -163,10 +212,10 @@ const updateDisplayIndex = () => {
   const anglePerPrize = 360 / prizes.length
 
   // 将旋转角度转换为 0 ~ 360
-  const currentAngle = ((rotate.value % 360) + 360) % 360
+  const nowAngle = ((rotate.value % 360) + 360) % 360
 
   // 指针固定在顶部，所以需要反向计算
-  const pointerAngle = (360 - currentAngle) % 360
+  const pointerAngle = (360 - nowAngle) % 360
 
   // 得到当前指针对应的奖项索引
   displayIndex.value = Math.floor(pointerAngle / anglePerPrize)
@@ -262,7 +311,7 @@ const startAnimation = (
 const spin = async () => {
 
   // 正在旋转时不允许再次点击
-  if (isSpinning.value) {
+  if (isSpinning.value || deleteDialogOpen.value) {
     return
   }
 
@@ -278,7 +327,7 @@ const spin = async () => {
   }
 
   // 获取旋转时间
-  const spinTime = Number(wheelStore.currentWheel.spinTime)
+  const spinTime = Number(wheelStore.nowWheel.spinTime)
 
   if (!Number.isFinite(spinTime) || spinTime <= 0) {
     uni.showToast({
@@ -301,11 +350,11 @@ const spin = async () => {
     index.value * anglePerPrize + anglePerPrize / 2
 
   // 当前转盘角度
-  const currentAngle = ((rotate.value % 360) + 360) % 360
+  const nowAngle = ((rotate.value % 360) + 360) % 360
 
   // 计算需要补转的角度
   const alignAngle =
-    (360 - (prizeCenterAngle + currentAngle) % 360) % 360
+    (360 - (prizeCenterAngle + nowAngle) % 360) % 360
 
   // 起始角度
   const startAngle = rotate.value
@@ -362,7 +411,7 @@ const change = () => {
 const restorePrizeOrder = () => {
   if (isSpinning.value) return
 
-  displayPrizes.value = wheelStore.currentWheel.prizes.slice()
+  displayPrizes.value = wheelStore.nowWheel.prizes.slice()
   updateDisplayIndex()
 }
 
@@ -393,7 +442,7 @@ const Go = (setUrl:string)=>{
   background: #fff5e9;
 
   // 当前奖项标题
-  .current-prize {
+  .now-prize {
     width: 100%;
     height: 100rpx;
 
