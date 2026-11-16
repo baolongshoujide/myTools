@@ -22,7 +22,7 @@ const props = defineProps<{
 const wheelStore = useWheelStore()
 const selectWheel = ()=>{
   wheelStore.selectWheel(props.prop.id)
-  uni.navigateTo({url:'/pages/function/index'})
+  uni.redirectTo({url:'/pages/function/index'})
 }
 </script>
 <style lang="scss" scoped>

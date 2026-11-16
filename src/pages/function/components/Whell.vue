@@ -152,7 +152,7 @@ const isSpinning = ref(false)
 const index = ref(0)
 
 // 当前指针经过的奖项索引
-const displayIndex = ref(0)
+const displayIndex = ref(999)
 
 // 保存动画定时器，方便清理
 let animationTimer: WheelAnimationTimer = null

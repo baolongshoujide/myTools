@@ -14,15 +14,9 @@
     </view>
 
     <!-- 中间加号 -->
-    <view class="tab-item plus-item" @tap="openAddMenu" @touchstart="isLong = false" @longpress="goHome">
+    <view :style="{ display: nowRoute && !isActive('/pages/index/index') ? 'flex' : 'none' }" class="tab-item plus-item" @tap="openAddMenu" @touchstart="isLong = false" @longpress="goHome">
        <view class="plus-circle">
-          <uni-icons
-            v-if="isLong"
-            type="home"
-            size="30"
-            color="#fff"
-          />
-       <text v-else class="plus">＋</text>
+         <text class="plus">＋</text>
        </view>
     </view>
     <!-- 列表 -->
