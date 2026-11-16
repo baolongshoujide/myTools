@@ -56,7 +56,7 @@ const goTab = (url: string) => {
 
 const isLong = ref(false)
 const createWheel = () => {
-  uni.navigateTo({ url: '/pagesWheel/wheelEdit/index?mode=create' })
+  uni.navigateTo({ url: '/pagesWheel/wheelEdit/index?mode=1' })
 }
 
 const addWheelPrize = () => {

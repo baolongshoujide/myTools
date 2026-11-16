@@ -7,8 +7,14 @@ export interface Wheel {
 
 export type WheelDraft = Omit<Wheel, 'id'>
 
-export interface WheelEmits {
-  (event: 'interaction-lock', locked: boolean): void
+export interface WheelPopupInstance {
+  open: () => void
+  close: () => void
+}
+
+export interface WheelFormInstance {
+  validate: () => Promise<unknown>
+  clearValidate: () => void
 }
 
 export interface WheelPressEvent {
@@ -27,4 +33,9 @@ export interface WheelInputProps {
 
 export interface WheelInputEmits {
   (event: 'update:modelValue', value: WheelInputValue): void
+}
+export type Settings = {
+  dong: boolean
+  noRepeat: boolean
+  showModal: boolean
 }

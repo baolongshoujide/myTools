@@ -47,24 +47,99 @@
 
     <!-- 底部操作 -->
     <view class="footer">
-      <uni-icons
-        type="gear"
-        size="45"
-        @tap="Go('/pagesWheel/wheelSetting/index')"
-      />
+      <view
+        class="footer-button"
+        hover-class="footer-button-active"
+        :hover-stay-time="150"
+        @tap="openSettings"
+      >
+        <uni-icons type="gear" size="45" />
+      </view>
 
-      <uni-icons
-        type="loop"
-        size="45"
+      <view
+        class="footer-button"
+        hover-class="footer-button-active"
+        :hover-stay-time="150"
         @tap="change"
-      />
+      >
+        <uni-icons type="loop" size="45" />
+      </view>
 
-      <uni-icons
-        type="compose"
-        size="45"
+      <view
+        class="footer-button"
+        hover-class="footer-button-active"
+        :hover-stay-time="150"
         @tap="Go('/pagesWheel/wheelEdit/index')"
-      />
+      >
+        <uni-icons type="compose" size="45" />
+      </view>
     </view>
+      <uni-popup
+        ref="settingsPopup"
+        type="bottom"
+        background-color="#ffffff"
+        border-radius="24px 24px 0 0"
+        :is-mask-click="true"
+        style="z-index: 10020;"
+      >
+        <view class="settings-panel">
+          <view class="settings-handle" />
+          <view class="settings-header">
+            <text class="settings-title">转盘设置</text>
+            <button class="settings-close" hover-class="none" @tap="closeSettings">
+              <uni-icons type="closeempty" :size="24" color="#7b8798" />
+            </button>
+          </view>
+          <scroll-view class="settings-content" scroll-y>
+              <view class="settings-list">
+
+                <view class="setting-item flex-between">
+                  <view class="setting-text">
+                    <uni-icons class="setting-icon" type="phone" color="#3d8efe" size="24" />
+                    震动
+                  </view>
+                  <switch
+                    :checked="wheelStore.settings.dong"
+                    @change="updateSetting('dong')"
+                    color="#3d8efe"
+                  />
+                </view>
+
+                <view class="setting-item flex-between">
+                  <view class="setting-text">
+                    <uni-icons class="setting-icon" type="loop" color="#3d8efe" size="24" />
+                    不重复抽取
+                  </view>
+                  <switch
+                    :checked="wheelStore.settings.noRepeat"
+                    @change="updateSetting('noRepeat')"
+                    color="#3d8efe"
+                  />
+                </view>
+
+                <view class="setting-item flex-between">
+                  <view class="setting-text">
+                    <uni-icons class="setting-icon" type="chatbubble" color="#3d8efe" size="24" />
+                    转盘结果弹窗
+                  </view>
+                  <switch
+                    :checked="wheelStore.settings.showModal"
+                    @change="updateSetting('showModal')"
+                    color="#3d8efe"
+                  />
+                </view>
+
+                <view class="setting-item flex-between">
+                  <view class="setting-text setting-text-disabled">
+                    <uni-icons class="setting-icon" type="mic" color="#3d8efe" size="24" />
+                    语音播报（暂未启用）
+                  </view>
+                  <switch :checked="false" disabled color="#3d8efe" />
+                </view>
+              </view>
+          </scroll-view>
+        </view>
+      </uni-popup>
 
   </view>
 </template>
@@ -73,13 +148,17 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useWheelStore } from '@/store/modules/wheel'
-import type { WheelAnimationTimer, WheelPressEvent, WheelEmits } from '@/types/wheel'
+import type { Settings, WheelAnimationTimer, WheelPressEvent, WheelPopupInstance } from '@/types/wheel'
 import { getPrizeIndex } from '../wheelGeometry'
 
 const wheelStore = useWheelStore()
-const emit = defineEmits<WheelEmits>()
+const emit = defineEmits({
+  'interaction-lock': (locked: boolean) => typeof locked === 'boolean',
+})
 const instance = getCurrentInstance()
 const deleteDialogOpen = ref(false)
+const settingsPopup = ref<WheelPopupInstance>()
+const drawnPrizes = ref<Set<string>>(new Set())
 // 转盘当前显示的顺序单独保存，避免打乱时改动编辑页保存的原顺序
 const displayPrizes = ref(wheelStore.nowWheel.prizes.slice())
 
@@ -87,9 +166,18 @@ watch(
   () => wheelStore.nowWheel.prizes,
   (prizes) => {
     displayPrizes.value = prizes.slice()
+    drawnPrizes.value = new Set()
     updateDisplayIndex()
   }
 )
+
+watch(() => wheelStore.nowWheel.id, () => {
+  drawnPrizes.value = new Set()
+})
+
+watch(() => wheelStore.settings.noRepeat, (enabled) => {
+  if (!enabled) drawnPrizes.value = new Set()
+})
 
 // 预设 12 种颜色
 const colors = [
@@ -146,9 +234,23 @@ const rotate = ref(0)
 // 是否正在旋转
 const isSpinning = ref(false)
 
+// 转盘旋转及删除确认期间禁止操作背景页面。
 watch([isSpinning, deleteDialogOpen], ([spinning, deleting]) => {
   emit('interaction-lock', spinning || deleting)
 }, { flush: 'sync' })
+
+const openSettings = () => {
+  if (isSpinning.value || deleteDialogOpen.value) return
+  settingsPopup.value?.open()
+}
+
+const closeSettings = () => {
+  settingsPopup.value?.close()
+}
+
+const updateSetting = (setting: keyof Settings) => {
+  wheelStore.settings[setting] = !wheelStore.settings[setting]
+}
 
 // 最终中奖索引
 const index = ref(0)
@@ -220,7 +322,14 @@ const updateDisplayIndex = () => {
   const pointerAngle = (360 - nowAngle) % 360
 
   // 得到当前指针对应的奖项索引
-  displayIndex.value = Math.floor(pointerAngle / anglePerPrize)
+  const nextDisplayIndex = Math.floor(pointerAngle / anglePerPrize)
+  const hasEnteredNextPrize = displayIndex.value !== 999 && displayIndex.value !== nextDisplayIndex
+  displayIndex.value = nextDisplayIndex
+
+  // 只在动画经过扇区边界时轻震；初始化、整理顺序时不触发。
+  if (isSpinning.value && hasEnteredNextPrize && wheelStore.settings.dong) {
+    uni.vibrateShort({ type: 'light' })
+  }
 }
 
 
@@ -342,7 +451,22 @@ const spin = async () => {
   isSpinning.value = true
 
   // 随机选择最终中奖索引
-  index.value = Math.floor(Math.random() * prizes.length)
+  let availableIndexes = prizes.map((_item, prizeIndex) => prizeIndex)
+
+  if (wheelStore.settings.noRepeat) {
+    const notDrawnIndexes = availableIndexes.filter(
+      (prizeIndex) => !drawnPrizes.value.has(prizes[prizeIndex])
+    )
+
+    if (notDrawnIndexes.length > 0) {
+      availableIndexes = notDrawnIndexes
+    } else {
+      // 本轮奖项都抽过后，自动开始新一轮。
+      drawnPrizes.value = new Set()
+    }
+  }
+
+  index.value = availableIndexes[Math.floor(Math.random() * availableIndexes.length)]
 
   // 每个奖项占据的角度
   const anglePerPrize = 360 / prizes.length
@@ -372,12 +496,23 @@ const spin = async () => {
       spinTime * 1000
     )
 
-    // 显示中奖结果
-    uni.showModal({
-      title: '抽奖结果',
-      content: `恭喜你获得：${prizes[index.value]}`,
-      showCancel: false
-    })
+    const winningPrize = prizes[index.value]
+
+    if (wheelStore.settings.noRepeat) {
+      drawnPrizes.value.add(winningPrize)
+    }
+
+    if (wheelStore.settings.showModal) {
+      // 等结果弹窗关闭后再解除旋转锁，避免弹窗仍遮挡页面时误以为底部按钮失效。
+      await new Promise<void>((resolve) => {
+        uni.showModal({
+          title: '抽奖结果',
+          content: `恭喜你获得：${winningPrize}`,
+          showCancel: false,
+          complete: () => resolve(),
+        })
+      })
+    }
 
   } finally {
     isSpinning.value = false
@@ -389,7 +524,8 @@ const spin = async () => {
 const change = () => {
   if (isSpinning.value) return
 
-  const prizes = displayPrizes.value.slice()
+  const originalPrizes = displayPrizes.value.slice()
+  const prizes = originalPrizes.slice()
 
   // 随机交换奖项位置
   for (let i = prizes.length - 1; i > 0; i--) {
@@ -399,6 +535,18 @@ const change = () => {
       prizes[randomIndex],
       prizes[i]
     ]
+  }
+
+  // 随机结果可能刚好和原顺序相同；有不同奖项时强制交换一次，避免看起来像按钮没响应。
+  const hasSameOrder = prizes.every((item, prizeIndex) => item === originalPrizes[prizeIndex])
+  if (hasSameOrder) {
+    const differentPrizeIndex = prizes.findIndex((item) => item !== prizes[0])
+    if (differentPrizeIndex > 0) {
+      ;[prizes[0], prizes[differentPrizeIndex]] = [
+        prizes[differentPrizeIndex],
+        prizes[0],
+      ]
+    }
   }
 
   // 只更新当前显示顺序，不覆盖原始奖项顺序
@@ -415,6 +563,7 @@ const restorePrizeOrder = () => {
 
   displayPrizes.value = wheelStore.nowWheel.prizes.slice()
   updateDisplayIndex()
+  displayIndex.value=999
 }
 
 defineExpose({
@@ -431,6 +580,7 @@ onUnmounted(() => {
 })
 
 const Go = (setUrl:string)=>{
+  if (isSpinning.value || deleteDialogOpen.value) return
   uni.navigateTo({
     url: setUrl
   })
@@ -464,7 +614,7 @@ const Go = (setUrl:string)=>{
     height: 0;
     // 百分比内边距根据容器宽度计算，使转盘保持正方形
     padding-bottom: 100%;
-    margin: 20rpx auto 0;
+    margin: 20rpx auto 48rpx;
     position: relative;
 
     // 圆盘
@@ -550,6 +700,8 @@ const Go = (setUrl:string)=>{
 
   // 底部操作
   .footer {
+    position: relative;
+    z-index: 5;
     width: 100%;
 
     display: flex;
@@ -559,12 +711,98 @@ const Go = (setUrl:string)=>{
     padding: 30rpx;
     box-sizing: border-box;
 
-    uni-icons {
+    .footer-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 30rpx;
       background-color: #e0d7d7;
       border-radius: 50%;
+      transition: transform 0.15s ease;
+    }
+
+    .footer-button-active {
+      transform: scale(0.85);
     }
   }
 }
 
+.settings-panel {
+  padding: 20rpx 32rpx 28rpx;
+  box-sizing: border-box;
+
+  .settings-handle {
+    width: 72rpx;
+    height: 8rpx;
+    margin: 0 auto 24rpx;
+    border-radius: 8rpx;
+    background: #e2e7ef;
+  }
+
+  .settings-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24rpx;
+  }
+
+  .settings-title {
+    font-size: 34rpx;
+    font-weight: 600;
+    color: #2c3a52;
+  }
+
+  .settings-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 64rpx;
+    height: 64rpx;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    background: #f2f5f9;
+  }
+
+  .settings-content {
+    height: 60vh;
+  }
+
+  .settings-done {
+    margin-top: 24rpx;
+    border-radius: 20rpx;
+    font-size: 30rpx;
+    color: #fff;
+    background: #2878ff;
+  }
+
+  .settings-close::after,
+  .settings-done::after {
+    border: none;
+  }
+}
+
+.settings-list {
+  .setting-item {
+    min-height: 70rpx;
+    margin-bottom: 20rpx;
+    padding: 10rpx;
+    border-radius: 15rpx;
+    background-color: #e0dcdc;
+
+    .setting-text {
+      display: flex;
+      align-items: center;
+      font-size: 45rpx;
+
+      .setting-icon {
+        margin-right: 12rpx;
+      }
+    }
+
+    .setting-text-disabled {
+      color: #a0a0a0;
+    }
+  }
+}
 </style>

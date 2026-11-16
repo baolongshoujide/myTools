@@ -1,213 +1,232 @@
 <template>
   <view class="wheel-edit">
-    <Item>
-      <template #title>轮盘标题</template>
-      <MyInput v-model="backupWheel.name" placeholder="请输入轮盘名称" />
-    </Item>
+    <uni-forms ref="form" :model="draftWheel" :rules="formRules" err-show-type="toast">
+      <Item>
+        <template #title>轮盘标题</template>
+        <uni-forms-item name="name">
+          <MyInput v-model="draftWheel.name" placeholder="请输入轮盘名称" />
+        </uni-forms-item>
+      </Item>
 
-    <Item>
-      <view class="time-row">
-        <text class="time-label">旋转时间（秒）</text>
-        <uni-number-box
-          v-model="backupWheel.spinTime"
-          :min="1"
-          :max="9"
-          :width="30"
-        />
-      </view>
-    </Item>
-
-    <Item>
-      <template #title>
-        <view class="prize-heading">
-          <text>奖品选项</text>
-        </view>
-      </template>
-
-      <view
-        v-for="(prize, index) in backupWheel.prizes"
-        :key="index"
-        class="prize-row"
-      >
-        <MyInput
-          v-model="backupWheel.prizes[index]"
-          class="prize-input"
-          :placeholder="`奖项${index + 1}`"
-        >
-          <template #left>
-            <image
-              class="prefix-icon"
-              :class="{ 'delete-icon-disabled': backupWheel.prizes.length <= 2 }"
-              src="/static/delete.png"
-              mode="aspectFit"
-              @tap.stop="removePrize(index)"
+      <Item>
+        <uni-forms-item name="spinTime">
+          <view class="time-row">
+            <text class="time-label">旋转时间（秒）</text>
+            <uni-number-box
+              v-model="draftWheel.spinTime"
+              :min="1"
+              :max="9"
+              :width="30"
             />
-          </template>
-        </MyInput>
-        
-      </view>
-      <view class="action-row" @tap="addPrize()">
-        <MyInput
-          placeholder="添加新选项"
-          placeholder-style="color:#2979FF;font-size:18px"
-          disabled
-        >
-          <template #left>
-            <image class="prefix-icon" src="/static/添加.png" mode="aspectFit" />
-          </template>
-        </MyInput>
-      </view>
-      <view class="action-row">
-        <MyInput
-          placeholder="批量添加选项"
-          placeholder-style="color:#2979FF;font-size:18px"
-           readonly
-          @tap="popup.open()"
-        >
-          <template #left>
-            <image class="prefix-icon" src="/static/批量添加.png" mode="aspectFit" />
-          </template>
-        </MyInput>
-      </view>
-    </Item>
+          </view>
+        </uni-forms-item>
+      </Item>
+
+      <Item>
+        <template #title>
+          <view class="prize-heading">
+            <text>奖品选项</text>
+          </view>
+        </template>
+        <uni-forms-item name="prizes">
+          <view v-for="(item, index) in draftWheel.prizes" :key="index" class="prize-row">
+            <uni-forms-item :name="['prizes', index]" :rules="prizeRules" class="prize-input">
+              <MyInput v-model="draftWheel.prizes[index]" :placeholder="`奖项${index + 1}`">
+                <template #left>
+                  <image
+                    class="prefix-icon"
+                    :class="{ 'delete-icon-disabled': draftWheel.prizes.length <= 2 }"
+                    src="/static/delete.png"
+                    mode="aspectFit"
+                    @tap.stop="removeDraftPrize(index)"
+                  />
+                </template>
+              </MyInput>
+            </uni-forms-item>
+          </view>
+          <view class="action-row" @tap="addDraftPrize">
+            <view class="action-display">
+              <MyInput
+                placeholder="添加新选项"
+                placeholder-style="color:#2979FF;font-size:18px"
+                disabled
+              >
+                <template #left>
+                  <image class="prefix-icon" src="/static/添加.png" mode="aspectFit" />
+                </template>
+              </MyInput>
+            </view>
+          </view>
+          <view class="action-row" @tap="openMore">
+            <view class="action-display">
+              <MyInput
+                placeholder="批量添加选项"
+                placeholder-style="color:#2979FF;font-size:18px"
+                disabled
+              >
+                <template #left>
+                  <image class="prefix-icon" src="/static/批量添加.png" mode="aspectFit" />
+                </template>
+              </MyInput>
+            </view>
+          </view>
+        </uni-forms-item>
+      </Item>
+    </uni-forms>
 
     <text class="hint">至少保留两个奖项；保存后同步到转盘。</text>
     <view class="bottom-buttons">
-      <button class="button reset" @tap="reset">重置</button>
-      <button class="button save" @tap="save">{{ isCreating ? '创建转盘' : '保存修改' }}</button>
+      <button class="button reset" :disabled="saving" @tap="resetForm">重置</button>
+      <button class="button save" :disabled="saving" :loading="saving" @tap="save">
+        {{ isCreating ? '创建转盘' : '保存修改' }}
+      </button>
     </view>
   </view>
- <uni-popup
-  ref="popup"
-  type="bottom"
-  background-color="#fff"
-  borderRadius="10px 10px 0 0"
- >
-  <view class="popup">
-    <view style="display: flex; flex-direction: column; align-items: center;">
-       <text>输入添加项并用，或。隔开</text>
-       <text style="color: red; font-size: 12px;">温馨提示：空格和回车也可哟</text>
+
+  <uni-popup ref="popup" type="bottom" background-color="#fff" border-radius="10px 10px 0 0">
+    <view class="popup">
+      <view style="display: flex; flex-direction: column; align-items: center;">
+        <text>输入添加项并用，或。隔开</text>
+        <text style="color: red; font-size: 12px;">温馨提示：空格和回车也可哟</text>
+      </view>
+      <textarea v-model="more" placeholder="请输入内容" :maxlength="-1" />
+      <button class="button" @tap="importDraftPrizes">一键导入(共{{ importedPrizes.length }}个选项)</button>
     </view>
-    <textarea
-      v-model="more"
-      placeholder="请输入内容"
-      maxlength="-1"
-    />
-    <button class="button" @tap="addMore">一键导入(共{{ num }}个选项)</button>
-  </view>
- </uni-popup>
+  </uni-popup>
 </template>
 
 <script setup lang="ts">
+import { computed, nextTick, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { useWheelStore } from '@/store/modules/wheel'
-import type { Wheel } from '@/types/wheel'
+import type { Wheel, WheelFormInstance, WheelPopupInstance } from '@/types/wheel'
 import Item from './components/Item.vue'
 import MyInput from './components/MyInput.vue'
-import { computed, ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
 
 const wheelStore = useWheelStore()
-const popup = ref()
+const form = ref<WheelFormInstance>()
+const popup = ref<WheelPopupInstance>()
 const isCreating = ref(false)
+const saving = ref(false)
+const more = ref('')
+const draftWheel = ref<Wheel>({ id: '', name: '', spinTime: 5, prizes: ['', ''] })
 
-// 保存进入编辑页面时的数据
-const backupWheel = ref<Wheel>({
-  id: '1',
-  name: '',
-  spinTime: 5,
-  prizes: [],
-})
+const formRules = {
+  name: {
+    rules: [
+      { required: true, errorMessage: '请输入转盘名称' },
+      { pattern: '\\S', errorMessage: '转盘名称不能只有空格' },
+    ],
+  },
+  spinTime: {
+    rules: [
+      { required: true, errorMessage: '请填写旋转时间' },
+      { format: 'number', errorMessage: '旋转时间需为数字' },
+      { minimum: 1, maximum: 9, errorMessage: '旋转时间需为1到9秒' },
+    ],
+  },
+  prizes: {
+    rules: [
+      { required: true, errorMessage: '请添加奖项' },
+      { format: 'array', errorMessage: '奖项格式不正确' },
+      { minLength: 2, errorMessage: '至少保留两个奖项' },
+    ],
+  },
+}
 
-// 页面加载时备份
-onLoad((options) => {
-  isCreating.value = options?.mode === 'create'
+const prizeRules = [
+  { required: true, errorMessage: '请填写每个奖项' },
+  { pattern: '\\S', errorMessage: '奖项不能只有空格' },
+]
+
+const clearErrors = async () => {
+  await nextTick()
+  form.value?.clearValidate()
+}
+
+// 初始化和重置共用这一处；编辑时始终读取最初进入的那个转盘。
+const resetForm = () => {
   if (isCreating.value) {
-    backupWheel.value = { id: '', name: '', spinTime: 5, prizes: ['', ''] }
-    uni.setNavigationBarTitle({ title: '新建转盘' })
-    return
-  }
-  backupWheel.value = {
-    id: wheelStore.nowWheel.id,
-    name: wheelStore.nowWheel.name,
-    spinTime: wheelStore.nowWheel.spinTime,
-    prizes: wheelStore.nowWheel.prizes.slice(),
-  }
-})
-
-  const more = ref('')
-
-  const addPrize = (word: string ='') => {
-      backupWheel.value.prizes.push(word)
-  }
-  const SonAddMore = (word: string, son: string[]) => {
-    if (word.trim()) {
-      son.push(word.trim())
-    }
-  }
- 
-  const num = computed(() => {
-    return more.value.split(/[ ,，.。\n\r]+/).filter(item => item.trim()).length
-  })
-  const addMore = () => {
-    const son: string[] = []
-    let word = ''
-
-    for (const item of more.value) {
-      if (/[ ,，.。\n\r]/.test(item)) {
-        SonAddMore(word, son)
-        word = ''
-      } else {
-        word += item
-      }
-    }
-    SonAddMore(word, son)
-    son.forEach((item) => {
-      backupWheel.value.prizes.push(item)
-    })
-    more.value = ''
-  }
-
-
-  const removePrize = (index: number) => {
-    if (backupWheel.value.prizes.length <= 2) return
-    backupWheel.value.prizes.splice(index, 1)
-  }
-
-  const reset = ()=>{
-    if (isCreating.value) {
-      backupWheel.value = { id: '', name: '', spinTime: 5, prizes: ['', ''] }
-      more.value = ''
+    draftWheel.value = { id: '', name: '', spinTime: 5, prizes: ['', ''] }
+  } else {
+    const item = wheelStore.wheels.find((item) => item.id === draftWheel.value.id)
+    if (!item) {
+      uni.showToast({ title: '转盘不存在，请返回重新选择', icon: 'none' })
       return
     }
-     backupWheel.value = {
-    id: wheelStore.nowWheel.id,
-    name: wheelStore.nowWheel.name,
-    spinTime: wheelStore.nowWheel.spinTime,
-    prizes: wheelStore.nowWheel.prizes.slice(),
+    draftWheel.value = {
+      id: item.id,
+      name: item.name,
+      spinTime: item.spinTime,
+      prizes: item.prizes.slice(),
+    }
   }
   more.value = ''
-  }
+  clearErrors()
+}
 
-const save = () => {
-  const data = backupWheel.value
-  if (!data.name.trim()) {
-    uni.showToast({ title: '请输入转盘名称', icon: 'none' })
+onLoad((options) => {
+  isCreating.value = options?.mode === '1'
+  draftWheel.value.id = isCreating.value ? '' : wheelStore.nowWheel.id
+  resetForm()
+  uni.setNavigationBarTitle({ title: isCreating.value ? '新建转盘' : '编辑转盘' })
+})
+
+const addDraftPrize = () => {
+  draftWheel.value.prizes.push('')
+}
+
+const removeDraftPrize = (index: number) => {
+  if (draftWheel.value.prizes.length <= 2) return
+  draftWheel.value.prizes.splice(index, 1)
+  clearErrors()
+}
+
+const importedPrizes = computed(() => {
+  return more.value.split(/[\s,，.。]+/).filter((item) => item)
+})
+
+const openMore = () => {
+  popup.value?.open()
+}
+
+const importDraftPrizes = () => {
+  if (!importedPrizes.value.length) {
+    uni.showToast({ title: '请先输入奖项', icon: 'none' })
     return
   }
-  if (data.prizes.length < 2 || data.prizes.some((item) => !item.trim())) {
-    uni.showToast({ title: '请填写至少两个非空奖项', icon: 'none' })
-    return
+  for (const item of importedPrizes.value) {
+    const index = draftWheel.value.prizes.findIndex((item) => !item.trim())
+    if (index === -1) {
+      draftWheel.value.prizes.push(item)
+    } else {
+      draftWheel.value.prizes[index] = item
+    }
   }
-  if (!Number.isFinite(data.spinTime) || data.spinTime < 1 || data.spinTime > 9) {
-    uni.showToast({ title: '旋转时间需为1到9秒', icon: 'none' })
-    return
+  more.value = ''
+  popup.value?.close()
+  clearErrors()
+}
+
+const save = async () => {
+  if (saving.value || !form.value) return
+  saving.value = true
+  try {
+    await nextTick()
+    await form.value.validate()
+    const saved = isCreating.value
+      ? wheelStore.addWheel(draftWheel.value)
+      : wheelStore.updateWheel(draftWheel.value)
+    if (!saved) {
+      uni.showToast({ title: '保存失败，转盘可能已不存在', icon: 'none' })
+      return
+    }
+    uni.navigateBack()
+  } catch {
+    // 表单校验失败时，由 uni-forms 显示具体提示，并留在编辑页。
+  } finally {
+    saving.value = false
   }
-  if (isCreating.value) {
-    wheelStore.addWheel(data)
-  } else {
-    wheelStore.updateWheel(data)
-  }
-  uni.navigateBack()
 }
 </script>
 
@@ -218,6 +237,9 @@ const save = () => {
   padding: 24rpx;
   background: #fff5e9;
   padding-bottom: 140rpx;
+  :deep(.uni-forms-item) {
+    margin-bottom: 0;
+  }
   .prize-heading,
   .prize-row {
     display: flex;
@@ -241,6 +263,10 @@ const save = () => {
   .action-row {
     width: 100%;
     margin-bottom: 16rpx;
+  }
+
+  .action-display {
+    pointer-events: none;
   }
 
   .time-row {

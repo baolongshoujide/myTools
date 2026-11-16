@@ -47,12 +47,6 @@
 			"root": "pagesWheel",
 			"pages": [
 				{
-					"path": "wheelSetting/index",
-					"style": {
-						"navigationBarTitleText": "设置"
-					}
-				},
-				{
 					"path": "wheelEdit/index",
 					"style": {
 						"navigationBarTitleText": "编辑"

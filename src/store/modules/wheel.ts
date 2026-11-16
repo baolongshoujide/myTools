@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { Wheel, WheelDraft } from '@/types/wheel'
+import type { Wheel, WheelDraft,Settings } from '@/types/wheel'
 
 export const useWheelStore = defineStore('wheel', () => {
   const wheels = ref<Wheel[]>([
@@ -50,36 +50,42 @@ export const useWheelStore = defineStore('wheel', () => {
     id: '13',
     name: '今天喝哪家',
     spinTime: 5,
-    prizes: [
-      '蜜雪冰城',
-      '甜啦啦',
-      '古茗',
-      '茶百道',
-      '沪上阿姨',
-      '霸王茶姬',
-      '一点点',
+    prizes: ['蜜雪冰城','甜啦啦','古茗','茶百道','沪上阿姨','霸王茶姬','一点点',
     ],
   },
   ])
+
+  const settings = ref<Settings>({
+    dong: false,
+    noRepeat: false,
+    showModal: false,
+})
 
   const nowWheelId = ref('1')
   const nowWheel = computed(
     () => wheels.value.find((item) => item.id === nowWheelId.value) ?? wheels.value[0]
   )
 
-  const updateWheel = (data: Wheel) => {
-    const index = wheels.value.findIndex((item) => item.id === data.id)
-    if (index === -1) return
-    wheels.value[index] = {
-      id: data.id,
-      name: data.name,
+  const copyWheel = (data: WheelDraft, id: string): Wheel => {
+    return {
+      id,
+      name: data.name.trim(),
       spinTime: data.spinTime,
-      prizes: data.prizes.slice(),
+      prizes: data.prizes.map((item) => item.trim()),
     }
   }
 
+  const updateWheel = (data: Wheel) => {
+    const index = wheels.value.findIndex((item) => item.id === data.id)
+    if (index === -1) return false
+    wheels.value[index] = copyWheel(data, data.id)
+    return true
+  }
+
   const selectWheel = (id:string)=>{
+    if (!wheels.value.some((item) => item.id === id)) return false
     nowWheelId.value = id
+    return true
   }
 
   const addPrize = (id: string, name: string) => {
@@ -96,13 +102,9 @@ export const useWheelStore = defineStore('wheel', () => {
     do {
       id = 'wheel-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
     } while (wheels.value.some((item) => item.id === id))
-    wheels.value.push({
-      id,
-      name: data.name,
-      spinTime: data.spinTime,
-      prizes: data.prizes.slice(),
-    })
+    wheels.value.push(copyWheel(data, id))
     nowWheelId.value = id
+    return true
   }
 
   const removePrize = (id: string, prizeIndex: number) => {
@@ -118,6 +120,7 @@ export const useWheelStore = defineStore('wheel', () => {
     wheels,
     nowWheelId,
     nowWheel,
+    settings,
     updateWheel,
     selectWheel,
     addPrize,
@@ -127,7 +130,7 @@ export const useWheelStore = defineStore('wheel', () => {
 }, {
   persist: {
     key: 'mytools-wheel',
-    pick: ['wheels', 'nowWheelId'],
+    pick: ['wheels', 'nowWheelId','settings'],
     storage: {
       getItem: (key) => {
         const data = uni.getStorageSync(key)

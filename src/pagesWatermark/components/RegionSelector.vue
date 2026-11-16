@@ -23,13 +23,13 @@
     <view class="selector-footer">
       <view class="selection-toolbar">
         <text class="selection-count">已选 {{ regions.length }} 处</text>
-        <button class="toolbar-button" :disabled="!regions.length" @tap="undoSelection">撤销上一处</button>
-        <button class="toolbar-button" :disabled="!regions.length" @tap="clearSelections">清空</button>
+        <button class="selector-button toolbar-button" :class="{ 'is-disabled': !regions.length }" :disabled="!regions.length" @tap="undoSelection">撤销上一处</button>
+        <button class="selector-button toolbar-button" :class="{ 'is-disabled': !regions.length }" :disabled="!regions.length" @tap="clearSelections">清空</button>
       </view>
       <text class="selection-tip">尽量只框住水印及少量周围背景，框得太大会改变原图细节。</text>
       <view class="selector-actions">
-        <button class="cancel-button" @tap="emit('cancel')">取消</button>
-        <button class="confirm-button" :disabled="!regions.length" @tap="confirmSelection">修复选区</button>
+        <button class="selector-button cancel-button" @tap="emit('cancel')">取消</button>
+        <button class="selector-button confirm-button" :class="{ 'is-disabled': !regions.length }" :disabled="!regions.length" @tap="confirmSelection">修复选区</button>
       </view>
     </view>
   </view>
@@ -227,12 +227,12 @@ onUnmounted(() => {
   font-size: 25rpx;
   color: #c4cede;
 }
-button {
+.selector-button {
   margin: 0;
   border-radius: 16rpx;
   font-size: 26rpx;
 }
-button::after {
+.selector-button::after {
   border: none;
 }
 .toolbar-button {
@@ -243,7 +243,7 @@ button::after {
   color: #c9d8f0;
   font-size: 23rpx;
 }
-.toolbar-button[disabled] {
+.toolbar-button.is-disabled {
   color: #697991;
   background: #212a3c;
 }
@@ -258,7 +258,7 @@ button::after {
   display: flex;
   gap: 20rpx;
 }
-.selector-actions button {
+.selector-actions .selector-button {
   flex: 1;
 }
 .cancel-button {
@@ -269,7 +269,7 @@ button::after {
   background: #2878ff;
   color: white;
 }
-.confirm-button[disabled] {
+.confirm-button.is-disabled {
   background: #344967;
   color: #8ea1bd;
 }

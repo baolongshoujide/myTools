@@ -23,7 +23,10 @@ const props = defineProps<{
 const wheelStore = useWheelStore()
 const navigation = useNavigationStore()
 const selectWheel = ()=>{
-  wheelStore.selectWheel(props.prop.id)
+  if (!wheelStore.selectWheel(props.prop.id)) {
+    uni.showToast({ title: '转盘不存在，请重新选择', icon: 'none' })
+    return
+  }
   navigation.openTab('/pages/function/index')
 }
 </script>

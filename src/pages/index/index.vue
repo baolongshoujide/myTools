@@ -38,12 +38,20 @@
       </swiper-item>
     </swiper>
     <CustomTabBar />
-    <view v-if="navigation.locked" class="interaction-mask" @touchmove.stop.prevent />
+    <view
+      v-if="navigation.locked"
+      class="interaction-mask"
+      @touchstart.stop.prevent
+      @touchmove.stop.prevent
+      @touchend.stop.prevent
+      @tap.stop.prevent
+      @click.stop.prevent
+    />
   </view>
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import CustomTabBar from '@/compoents/CustomTabBar.vue'
 import HomePanel from './components/HomePanel.vue'
@@ -58,6 +66,7 @@ const navigation = useNavigationStore()
 const wheelStore = useWheelStore()
 const wheelRef = ref<InstanceType<typeof Whell>>()
 const refreshing = ref(false)
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 let visible = false
 
 const updateTitle = () => {
@@ -71,11 +80,18 @@ const changeTab = (event: MainSwiperEvent) => {
   navigation.selectTab(event.detail.current)
 }
 
-const restoreOrder = async () => {
+const restoreOrder = () => {
+  if (refreshing.value) return
+
   refreshing.value = true
   wheelRef.value?.restorePrizeOrder()
-  await nextTick()
-  refreshing.value = false
+
+  // 等原生 scroll-view 的下拉刷新动画收尾后再解除 refreshing，
+  // 避免刷新手势还没结束时紧接着的点击被滚动层吞掉。
+  refreshTimer = setTimeout(() => {
+    refreshing.value = false
+    refreshTimer = null
+  }, 500)
 }
 
 watch(() => [navigation.nowTab, wheelStore.nowWheel.name], updateTitle)
@@ -90,7 +106,13 @@ onShow(() => {
 })
 
 onHide(() => { visible = false })
-onUnload(() => { navigation.setLocked(false) })
+onUnload(() => {
+  navigation.setLocked(false)
+  if (refreshTimer) {
+    clearTimeout(refreshTimer)
+    refreshTimer = null
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -122,8 +144,12 @@ onUnload(() => { navigation.setLocked(false) })
 }
 .interaction-mask {
   position: fixed;
-  inset: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 10000;
   background: transparent;
+  pointer-events: auto;
 }
 </style>
