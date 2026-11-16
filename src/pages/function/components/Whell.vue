@@ -66,9 +66,6 @@
       />
     </view>
 
-    <!-- 防止旋转时重复点击 -->
-    <view v-if="isSpinning" class="spin-mask"></view>
-
   </view>
 </template>
 
@@ -76,10 +73,11 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 'vue'
 import { useWheelStore } from '@/store/modules/wheel'
-import type { WheelAnimationTimer, WheelPressEvent } from '@/types/wheel'
+import type { WheelAnimationTimer, WheelPressEvent, WheelEmits } from '@/types/wheel'
 import { getPrizeIndex } from '../wheelGeometry'
 
 const wheelStore = useWheelStore()
+const emit = defineEmits<WheelEmits>()
 const instance = getCurrentInstance()
 const deleteDialogOpen = ref(false)
 // 转盘当前显示的顺序单独保存，避免打乱时改动编辑页保存的原顺序
@@ -147,6 +145,10 @@ const rotate = ref(0)
 
 // 是否正在旋转
 const isSpinning = ref(false)
+
+watch([isSpinning, deleteDialogOpen], ([spinning, deleting]) => {
+  emit('interaction-lock', spinning || deleting)
+}, { flush: 'sync' })
 
 // 最终中奖索引
 const index = ref(0)
@@ -421,6 +423,7 @@ defineExpose({
 
 // 页面销毁时清理动画
 onUnmounted(() => {
+  emit('interaction-lock', false)
   if (animationTimer) {
     clearTimeout(animationTimer)
     animationTimer = null
@@ -564,14 +567,4 @@ const Go = (setUrl:string)=>{
   }
 }
 
-// 防止旋转时重复点击
-.spin-mask {
-  position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
-  background: transparent;
-}
 </style>

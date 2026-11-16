@@ -35,34 +35,26 @@
   </view>
 </template>
 
-<script setup>
-import { onShow } from '@dcloudio/uni-app';
-import { onMounted, ref } from 'vue';
+<script setup lang="ts">
+import { computed, ref } from 'vue';
 import { useWheelStore } from '@/store/modules/wheel';
+import { useNavigationStore } from '@/store/modules/navigation';
 
 const wheelStore = useWheelStore()
+const navigation = useNavigationStore()
 
-const nowRoute = ref('')
+const nowRoute = computed(() => navigation.nowRoute)
 
-const updateNowRoute = () => {
-  const pages = getCurrentPages()
-  const nowPage = pages[pages.length - 1]
-  nowRoute.value = nowPage ? '/' + nowPage.route : ''
-}
-
-const isActive = (url) => {
+const isActive = (url: string) => {
   return nowRoute.value === url
 }
 
-onMounted(updateNowRoute)
-onShow(updateNowRoute)
-
-const goTab = (url) => {
+const goTab = (url: string) => {
   if (isActive(url)) return
-  uni.redirectTo({ url });
+  navigation.openTab(url)
 };
 
-const isLong = ref()
+const isLong = ref(false)
 const createWheel = () => {
   uni.navigateTo({ url: '/pagesWheel/wheelEdit/index?mode=create' })
 }
@@ -89,16 +81,15 @@ const addWheelPrize = () => {
   })
 }
 
-// 加号根据当前页面分配操作。
+// swiper 内切换时实际路由不变，使用当前滑块对应的逻辑路由分配加号操作。
 // 连点器页面做好后，在这里接入：功能页 → 添加单个操作，列表页 → 新建方案。
-const addActions = {
+const addActions: Record<string, () => void> = {
   '/pages/list/index': createWheel,
   '/pages/function/index': addWheelPrize,
 }
 
 const openAddMenu = () => {
-  if (isLong.value) return
-  updateNowRoute()
+  if (isLong.value || navigation.locked) return
   const action = addActions[nowRoute.value]
   if (action) {
     action()
@@ -118,9 +109,7 @@ const openAddMenu = () => {
 
 const goHome = ()=>{
   isLong.value = true
-  uni.reLaunch({
-    url: '/pages/index/index'
-  })
+  navigation.openTab('/pages/index/index')
 }
 </script>
 

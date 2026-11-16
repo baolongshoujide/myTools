@@ -1,27 +1,14 @@
 <template>
-  <Layout>
-    <view class="wheel-list">
-      <Item :prop = item v-for="item in wheelStore.wheels" :key="item.id" />
-    </view>
-  </Layout>
+  <view />
 </template>
 
-<script lang="ts" setup>
-import Layout from '@/compoents/Layout.vue'
-import Item from './components/Item.vue'
-import { useWheelStore } from '@/store/modules/wheel';
+<script setup lang="ts">
+import { onLoad } from '@dcloudio/uni-app'
+import { useNavigationStore } from '@/store/modules/navigation'
 
-const wheelStore = useWheelStore()
-
-console.log(wheelStore.wheels);
-
+// 兼容原来的路由入口，实际内容统一由主页面的 swiper 展示。
+onLoad(() => {
+  useNavigationStore().selectTab(2)
+  uni.redirectTo({ url: '/pages/index/index?tab=2' })
+})
 </script>
-
-<style scoped>
-.wheel-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20rpx;
-  padding-top: 24rpx;
-}
-</style>

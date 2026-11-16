@@ -14,15 +14,17 @@
 <script lang="ts" setup>
 import type{ Wheel } from '@/types/wheel';
 import { useWheelStore } from '@/store/modules/wheel';
+import { useNavigationStore } from '@/store/modules/navigation';
 
 const props = defineProps<{
    prop:Wheel
 }>()
 
 const wheelStore = useWheelStore()
+const navigation = useNavigationStore()
 const selectWheel = ()=>{
   wheelStore.selectWheel(props.prop.id)
-  uni.redirectTo({url:'/pages/function/index'})
+  navigation.openTab('/pages/function/index')
 }
 </script>
 <style lang="scss" scoped>

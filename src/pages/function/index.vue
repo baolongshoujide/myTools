@@ -1,35 +1,14 @@
 <template>
- <Layout class="wheel-layout">
-  <Whell ref="wheelRef"></Whell>
-  
- </Layout>
+  <view />
 </template>
 
-<script lang="ts" setup>
-import { ref } from 'vue'
-import { onPullDownRefresh,onShow } from '@dcloudio/uni-app'
-import Whell from './components/Whell.vue';
-import Layout from '@/compoents/Layout.vue';
-import { useWheelStore } from '@/store/modules/wheel';
+<script setup lang="ts">
+import { onLoad } from '@dcloudio/uni-app'
+import { useNavigationStore } from '@/store/modules/navigation'
 
-const wheelRef = ref()
-const wheelStore = useWheelStore()
-
-onPullDownRefresh(() => {
-  wheelRef.value?.restorePrizeOrder()
-  uni.stopPullDownRefresh()
+// 兼容原来的路由入口，实际内容统一由主页面的 swiper 展示。
+onLoad(() => {
+  useNavigationStore().selectTab(1)
+  uni.redirectTo({ url: '/pages/index/index?tab=1' })
 })
-
-onShow(()=>{
-  uni.setNavigationBarTitle({
-    title:wheelStore.nowWheel.name,
-  })
-})
-
 </script>
-
-<style scoped>
-.wheel-layout {
-  background-color: #fff5e9;
-}
-</style>

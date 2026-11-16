@@ -1,22 +1,14 @@
 <template>
-  <Layout>
-    <view class="my">my</view>
-  </Layout>
-  
+  <view />
 </template>
 
-<script lang="ts" setup>
-import Layout from '@/compoents/Layout.vue';
+<script setup lang="ts">
+import { onLoad } from '@dcloudio/uni-app'
+import { useNavigationStore } from '@/store/modules/navigation'
+
+// 兼容原来的路由入口，实际内容统一由主页面的 swiper 展示。
+onLoad(() => {
+  useNavigationStore().selectTab(3)
+  uni.redirectTo({ url: '/pages/index/index?tab=3' })
+})
 </script>
-
-<style scoped>
-.my{
-  width: 300px;
-  max-width: 100%;
-  box-sizing: border-box;
-  height: 300px;
-  border-top: 10px solid black;
-    border-left: 10px solid red;
-
-}
-</style>

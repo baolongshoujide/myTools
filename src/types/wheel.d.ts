@@ -7,6 +7,10 @@ export interface Wheel {
 
 export type WheelDraft = Omit<Wheel, 'id'>
 
+export interface WheelEmits {
+  (event: 'interaction-lock', locked: boolean): void
+}
+
 export interface WheelPressEvent {
   touches?: { clientX: number; clientY: number }[]
   changedTouches?: { clientX: number; clientY: number }[]
