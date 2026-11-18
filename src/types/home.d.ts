@@ -1,10 +1,12 @@
+import type { ListMode } from './navigation'
+
 export interface Tool {
   title: string
   description: string
   tone: string
-  color: string
+  color: 'accent' | 'green' | 'purple'
   icon: string
-  path?: string
+  destination: { list: ListMode } | { url: string }
 }
 
 export interface ToolCardProps {

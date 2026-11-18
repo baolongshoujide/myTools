@@ -5,7 +5,7 @@
       :model-value="props.modelValue"
       :input-border="false"
       :styles="inputStyles"
-      :placeholder-style="props.placeholderStyle"
+      :placeholder-style="props.placeholderStyle || defaultPlaceholderStyle"
       @update:model-value="onUpdateModelValue"
     >
       <template #left>
@@ -16,13 +16,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useThemeStore } from '@/store/modules/theme'
 import type { WheelInputEmits, WheelInputProps, WheelInputValue } from '@/types/wheel'
 
 defineOptions({ inheritAttrs: false })
 
-const props = withDefaults(defineProps<WheelInputProps>(), {
-  placeholderStyle: 'font-size: 18px;',
-})
+const props = defineProps<WheelInputProps>()
+const theme = useThemeStore()
+const defaultPlaceholderStyle = computed(() => 'font-size: 18px; color: ' + theme.colors.muted + ';')
 
 const emit = defineEmits<WheelInputEmits>()
 
@@ -30,11 +32,11 @@ const onUpdateModelValue = (value: WheelInputValue) => {
   emit('update:modelValue', value)
 }
 
-const inputStyles = {
-  color: '#333333',
-  backgroundColor: '#f5f5f5',
-  borderColor: '#f5f5f5',
-}
+const inputStyles = computed(() => ({
+  color: theme.colors.text,
+  backgroundColor: theme.colors.raised,
+  borderColor: theme.colors.raised,
+}))
 </script>
 
 <style lang="scss" scoped>
@@ -44,7 +46,7 @@ const inputStyles = {
   margin: 0;
   border-radius: 50rpx;
   overflow: hidden;
-  background-color: #f5f5f5;
+  background-color: var(--dragon-raised);
   
 }
 </style>

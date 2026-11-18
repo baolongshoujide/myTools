@@ -81,9 +81,11 @@ const measureStage = async () => {
   }).exec()
 }
 
-const eventPoint = (event: SelectionTouchEvent): SelectionPoint | null => {
+const eventPoint = (event: Event | SelectionTouchEvent): SelectionPoint | null => {
   if (!stageFrame || !imageFrame.value.width) return null
-  const touch = event.touches?.[0] || event.changedTouches?.[0]
+  // 编辑器可能将 view 的触摸事件识别为 Event，运行时按触摸事件读取并检查坐标。
+  const touchEvent = event as SelectionTouchEvent
+  const touch = touchEvent.touches?.[0] || touchEvent.changedTouches?.[0]
   if (!touch || typeof touch.clientX !== 'number' || typeof touch.clientY !== 'number') return null
   return {
     x: touch.clientX - stageFrame.left - imageFrame.value.left,
@@ -91,8 +93,9 @@ const eventPoint = (event: SelectionTouchEvent): SelectionPoint | null => {
   }
 }
 
-const startSelection = (event: SelectionTouchEvent) => {
-  if ((event.touches?.length || 0) > 1) return
+const startSelection = (event: Event | SelectionTouchEvent) => {
+  const touchEvent = event as SelectionTouchEvent
+  if ((touchEvent.touches?.length || 0) > 1) return
   if (regions.value.length >= 20) {
     uni.showToast({ title: '最多圈选20处，可先修复后再继续', icon: 'none' })
     return
@@ -103,14 +106,14 @@ const startSelection = (event: SelectionTouchEvent) => {
   draft.value = null
 }
 
-const moveSelection = (event: SelectionTouchEvent) => {
+const moveSelection = (event: Event | SelectionTouchEvent) => {
   if (!startPoint) return
   const point = eventPoint(event)
   if (!point) return
   draft.value = normalizedRegion(startPoint, clampImagePoint(point, imageFrame.value), imageFrame.value)
 }
 
-const finishSelection = (event: SelectionTouchEvent) => {
+const finishSelection = (event: Event | SelectionTouchEvent) => {
   moveSelection(event)
   const item = draft.value
   if (item && item.width * imageFrame.value.width >= 6 && item.height * imageFrame.value.height >= 6) {
@@ -152,8 +155,8 @@ onUnmounted(() => {
   z-index: 10000;
   display: flex;
   flex-direction: column;
-  background: #141b29;
-  color: #fff;
+  background: var(--dragon-page);
+  color: var(--dragon-text);
 }
 .selector-header {
   padding: 28rpx 28rpx 12rpx;
@@ -168,7 +171,7 @@ onUnmounted(() => {
   display: block;
   margin-top: 12rpx;
   font-size: 24rpx;
-  color: #aab6ca;
+  color: var(--dragon-muted);
 }
 .selection-stage {
   flex: 1;
@@ -183,7 +186,7 @@ onUnmounted(() => {
   top: 45%;
   width: 100%;
   text-align: center;
-  color: #aab6ca;
+  color: var(--dragon-muted);
 }
 .selection-image {
   position: absolute;
@@ -225,7 +228,7 @@ onUnmounted(() => {
 .selection-count {
   flex: 1;
   font-size: 25rpx;
-  color: #c4cede;
+  color: var(--dragon-muted);
 }
 .selector-button {
   margin: 0;
@@ -239,18 +242,18 @@ onUnmounted(() => {
   height: 60rpx;
   line-height: 60rpx;
   padding: 0 16rpx;
-  background: #283248;
-  color: #c9d8f0;
+  background: var(--dragon-raised);
+  color: var(--dragon-text);
   font-size: 23rpx;
 }
 .toolbar-button.is-disabled {
-  color: #697991;
-  background: #212a3c;
+  color: var(--dragon-muted);
+  background: var(--dragon-surface);
 }
 .selection-tip {
   display: block;
   margin: 20rpx 0;
-  color: #8f9db3;
+  color: var(--dragon-muted);
   font-size: 22rpx;
   line-height: 1.7;
 }
@@ -262,15 +265,15 @@ onUnmounted(() => {
   flex: 1;
 }
 .cancel-button {
-  background: #283248;
-  color: #cbd7e9;
+  background: var(--dragon-raised);
+  color: var(--dragon-text);
 }
 .confirm-button {
-  background: #2878ff;
+  background: var(--dragon-primary);
   color: white;
 }
 .confirm-button.is-disabled {
-  background: #344967;
-  color: #8ea1bd;
+  background: var(--dragon-raised);
+  color: var(--dragon-muted);
 }
 </style>

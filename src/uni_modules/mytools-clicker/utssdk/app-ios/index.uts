@@ -1,0 +1,13 @@
+export function isClickerReady(): boolean {
+  return false
+}
+
+export function openClickerSettings(): void {}
+
+export function configureClicker(_plansJson: string, _selectedId: string, _edit: boolean): boolean {
+  return false
+}
+
+export function drainClickerChanges(): string {
+  return '[]'
+}

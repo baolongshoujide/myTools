@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { Wheel, WheelDraft,Settings } from '@/types/wheel'
+import type { Wheel, WheelDraft, Settings, DeletedWheel } from '@/types/wheel'
 
 export const useWheelStore = defineStore('wheel', () => {
   const wheels = ref<Wheel[]>([
@@ -62,9 +62,59 @@ export const useWheelStore = defineStore('wheel', () => {
 })
 
   const nowWheelId = ref('1')
+  const recycleBin = ref<DeletedWheel[]>([])
   const nowWheel = computed(
     () => wheels.value.find((item) => item.id === nowWheelId.value) ?? wheels.value[0]
+      ?? { id: '', name: '暂无转盘', spinTime: 5, prizes: [] }
   )
+
+  const cleanRecycleBin = () => {
+    const expiresBefore = Date.now() - 7 * 24 * 60 * 60 * 1000
+    recycleBin.value = recycleBin.value.filter((item) => item.deletedAt > expiresBefore)
+  }
+
+  const deleteWheel = (id: string) => {
+    const wheelIndex = wheels.value.findIndex((item) => item.id === id)
+    if (wheelIndex < 0) return false
+    cleanRecycleBin()
+    const item = wheels.value[wheelIndex]
+    recycleBin.value.push({
+      id: item.id,
+      name: item.name,
+      spinTime: item.spinTime,
+      prizes: item.prizes.slice(),
+      deletedAt: Date.now(),
+    })
+    wheels.value.splice(wheelIndex, 1)
+    if (nowWheelId.value === id) nowWheelId.value = wheels.value[0]?.id || ''
+    return true
+  }
+
+  const hasWheelName = (name: string, exceptId?: string) => {
+    const normalized = name.trim().toLowerCase()
+    return wheels.value.some((item) => item.id !== exceptId && item.name.trim().toLowerCase() === normalized)
+  }
+
+  const restoreWheel = (id: string) => {
+    cleanRecycleBin()
+    const wheelIndex = recycleBin.value.findIndex((item) => item.id === id)
+    if (wheelIndex < 0 || wheels.value.some((item) => item.id === id)) return false
+    const item = recycleBin.value[wheelIndex]
+    const baseName = item.name.trim() || '未命名转盘'
+    let name = baseName
+    let number = 2
+    while (hasWheelName(name)) {
+      name = baseName + ' ' + number++
+    }
+    wheels.value.push(copyWheel({ ...item, name }, item.id))
+    recycleBin.value.splice(wheelIndex, 1)
+    if (!nowWheelId.value) nowWheelId.value = id
+    return true
+  }
+
+  const eraseWheel = (id: string) => {
+    recycleBin.value = recycleBin.value.filter((item) => item.id !== id)
+  }
 
   const copyWheel = (data: WheelDraft, id: string): Wheel => {
     return {
@@ -77,7 +127,7 @@ export const useWheelStore = defineStore('wheel', () => {
 
   const updateWheel = (data: Wheel) => {
     const index = wheels.value.findIndex((item) => item.id === data.id)
-    if (index === -1) return false
+    if (index === -1 || hasWheelName(data.name, data.id)) return false
     wheels.value[index] = copyWheel(data, data.id)
     return true
   }
@@ -98,6 +148,7 @@ export const useWheelStore = defineStore('wheel', () => {
   }
 
   const addWheel = (data: WheelDraft) => {
+    if (hasWheelName(data.name)) return false
     let id = ''
     do {
       id = 'wheel-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8)
@@ -121,6 +172,12 @@ export const useWheelStore = defineStore('wheel', () => {
     nowWheelId,
     nowWheel,
     settings,
+    recycleBin,
+    cleanRecycleBin,
+    deleteWheel,
+    restoreWheel,
+    hasWheelName,
+    eraseWheel,
     updateWheel,
     selectWheel,
     addPrize,
@@ -130,7 +187,7 @@ export const useWheelStore = defineStore('wheel', () => {
 }, {
   persist: {
     key: 'mytools-wheel',
-    pick: ['wheels', 'nowWheelId','settings'],
+    pick: ['wheels', 'nowWheelId', 'settings', 'recycleBin'],
     storage: {
       getItem: (key) => {
         const data = uni.getStorageSync(key)

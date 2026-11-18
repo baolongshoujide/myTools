@@ -3,13 +3,13 @@
   <view class="custom-tabbar">
     <!-- 首页 -->
     <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/index/index') }" @click="goTab('/pages/index/index')">
-      <uni-icons type="home" size="24" :color="isActive('/pages/index/index') ? '#2878ff' : '#888'" />
+      <uni-icons type="home" size="24" :color="isActive('/pages/index/index') ? theme.colors.accent : theme.colors.muted" />
       <text>首页</text>
     </view>
 
     <!-- 功能 -->
     <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/function/index') }" @click="goTab('/pages/function/index')">
-      <uni-icons type="bars" size="24" :color="isActive('/pages/function/index') ? '#2878ff' : '#888'" />
+      <uni-icons type="bars" size="24" :color="isActive('/pages/function/index') ? theme.colors.accent : theme.colors.muted" />
       <text>功能</text>
     </view>
 
@@ -24,12 +24,12 @@
   <uni-icons
     type="list"
     size="24"
-    :color="isActive('/pages/list/index') ? '#2878ff' : '#888'"
+    :color="isActive('/pages/list/index') ? theme.colors.accent : theme.colors.muted"
   />
   <text>列表</text>
 </view>
     <view class="tab-item" :class="{ 'tab-item-active': isActive('/pages/my/index') }" @click="goTab('/pages/my/index')">
-      <uni-icons type="person" size="24" :color="isActive('/pages/my/index') ? '#2878ff' : '#888'" />
+      <uni-icons type="person" size="24" :color="isActive('/pages/my/index') ? theme.colors.accent : theme.colors.muted" />
       <text>我的</text>
     </view>
   </view>
@@ -39,6 +39,10 @@
 import { computed, ref } from 'vue';
 import { useWheelStore } from '@/store/modules/wheel';
 import { useNavigationStore } from '@/store/modules/navigation';
+import { useThemeStore } from '@/store/modules/theme'
+
+const theme = useThemeStore()
+const emit = defineEmits(['create-clicker'])
 
 const wheelStore = useWheelStore()
 const navigation = useNavigationStore()
@@ -82,9 +86,11 @@ const addWheelPrize = () => {
 }
 
 // swiper 内切换时实际路由不变，使用当前滑块对应的逻辑路由分配加号操作。
-// 连点器页面做好后，在这里接入：功能页 → 添加单个操作，列表页 → 新建方案。
 const addActions: Record<string, () => void> = {
-  '/pages/list/index': createWheel,
+  '/pages/list/index': () => {
+    if (navigation.listMode === 'clicker') emit('create-clicker')
+    else createWheel()
+  },
   '/pages/function/index': addWheelPrize,
 }
 
@@ -121,7 +127,8 @@ const goHome = ()=>{
   bottom: 0;
   height: 110rpx;
   padding-bottom: env(safe-area-inset-bottom);
-  background: #fff;
+  background: var(--dragon-base);
+  border-top: 1rpx solid var(--dragon-border);
   display: flex;
   align-items: center;
   justify-content: space-around;
@@ -135,12 +142,12 @@ const goHome = ()=>{
     align-items: center;
     justify-content: center;
     font-size: 22rpx;
-    color: #888;
+    color: var(--dragon-muted);
     gap: 5rpx;
   }
 
   .tab-item-active {
-    color: #2878ff;
+    color: var(--dragon-accent);
     font-weight: bold;
   }
 
@@ -152,13 +159,13 @@ const goHome = ()=>{
     width: 100rpx;
     height: 100rpx;
     border-radius: 50%;
-    background: #2878ff;
+    background: var(--dragon-primary);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-top: -65rpx;
     box-shadow: 0 5rpx 15rpx rgba(40, 120, 255, 0.3);
-    border: 8rpx solid #fff;
+    border: 8rpx solid var(--dragon-base);
     transition: transform 0.15s ease;
 
   }

@@ -2,9 +2,9 @@
 <template>
   <view class="page">
 
-    <!-- 当前指针经过的奖项：单独占一行 -->
+    <!-- 独立的奖项展示区，未抽奖时仍保留位置，避免圆盘上下跳动。 -->
     <view class="now-prize">
-      {{ displayPrizes[displayIndex] || '' }}
+      <text class="now-prize-text">{{ displayPrizes[displayIndex] || '' }}</text>
     </view>
 
     <!-- 正方形转盘区域 -->
@@ -53,7 +53,7 @@
         :hover-stay-time="150"
         @tap="openSettings"
       >
-        <uni-icons type="gear" size="45" />
+        <uni-icons type="gear" size="45" :color="theme.colors.accent" />
       </view>
 
       <view
@@ -62,7 +62,7 @@
         :hover-stay-time="150"
         @tap="change"
       >
-        <uni-icons type="loop" size="45" />
+        <uni-icons type="loop" size="45" :color="theme.colors.accent" />
       </view>
 
       <view
@@ -71,23 +71,23 @@
         :hover-stay-time="150"
         @tap="Go('/pagesWheel/wheelEdit/index')"
       >
-        <uni-icons type="compose" size="45" />
+        <uni-icons type="compose" size="45" :color="theme.colors.accent" />
       </view>
     </view>
       <uni-popup
         ref="settingsPopup"
         type="bottom"
-        background-color="#ffffff"
+        :background-color="theme.colors.surface"
         border-radius="24px 24px 0 0"
         :is-mask-click="true"
         style="z-index: 10020;"
       >
-        <view class="settings-panel">
+        <view class="settings-panel" :style="theme.pageStyle">
           <view class="settings-handle" />
           <view class="settings-header">
             <text class="settings-title">转盘设置</text>
             <button class="settings-close" hover-class="none" @tap="closeSettings">
-              <uni-icons type="closeempty" :size="24" color="#7b8798" />
+              <uni-icons type="closeempty" :size="24" :color="theme.colors.muted" />
             </button>
           </view>
           <scroll-view class="settings-content" scroll-y>
@@ -95,49 +95,55 @@
 
                 <view class="setting-item flex-between">
                   <view class="setting-text">
-                    <uni-icons class="setting-icon" type="phone" color="#3d8efe" size="24" />
+                    <uni-icons class="setting-icon" type="phone" :color="theme.colors.accent" size="24" />
                     震动
                   </view>
                   <switch
                     :checked="wheelStore.settings.dong"
                     @change="updateSetting('dong')"
-                    color="#3d8efe"
+                    :color="theme.colors.accent"
                   />
                 </view>
 
                 <view class="setting-item flex-between">
                   <view class="setting-text">
-                    <uni-icons class="setting-icon" type="loop" color="#3d8efe" size="24" />
+                    <uni-icons class="setting-icon" type="loop" :color="theme.colors.accent" size="24" />
                     不重复抽取
                   </view>
                   <switch
                     :checked="wheelStore.settings.noRepeat"
                     @change="updateSetting('noRepeat')"
-                    color="#3d8efe"
+                    :color="theme.colors.accent"
                   />
                 </view>
 
                 <view class="setting-item flex-between">
                   <view class="setting-text">
-                    <uni-icons class="setting-icon" type="chatbubble" color="#3d8efe" size="24" />
+                    <uni-icons class="setting-icon" type="chatbubble" :color="theme.colors.accent" size="24" />
                     转盘结果弹窗
                   </view>
                   <switch
                     :checked="wheelStore.settings.showModal"
                     @change="updateSetting('showModal')"
-                    color="#3d8efe"
+                    :color="theme.colors.accent"
                   />
                 </view>
 
                 <view class="setting-item flex-between">
                   <view class="setting-text setting-text-disabled">
-                    <uni-icons class="setting-icon" type="mic" color="#3d8efe" size="24" />
+                    <uni-icons class="setting-icon" type="mic" :color="theme.colors.accent" size="24" />
                     语音播报（暂未启用）
                   </view>
-                  <switch :checked="false" disabled color="#3d8efe" />
+                  <switch :checked="false" disabled :color="theme.colors.accent" />
                 </view>
               </view>
           </scroll-view>
+          <button
+            class="settings-delete"
+            hover-class="settings-delete-pressed"
+            :disabled="!wheelStore.nowWheel.id || deleteDialogOpen"
+            @tap="deleteWholeWheel"
+          >删除整个转盘</button>
         </view>
       </uni-popup>
 
@@ -150,6 +156,9 @@ import { computed, getCurrentInstance, nextTick, onUnmounted, ref, watch } from 
 import { useWheelStore } from '@/store/modules/wheel'
 import type { Settings, WheelAnimationTimer, WheelPressEvent, WheelPopupInstance } from '@/types/wheel'
 import { getPrizeIndex } from '../wheelGeometry'
+import { useThemeStore } from '@/store/modules/theme'
+
+const theme = useThemeStore()
 
 const wheelStore = useWheelStore()
 const emit = defineEmits({
@@ -213,7 +222,7 @@ const wheelBackground = computed(() => {
   const prizes = displayPrizes.value
 
   if (!prizes.length) {
-    return '#eeeeee'
+    return theme.colors.surface
   }
 
   const one = 360 / prizes.length
@@ -246,6 +255,27 @@ const openSettings = () => {
 
 const closeSettings = () => {
   settingsPopup.value?.close()
+}
+
+const deleteWholeWheel = () => {
+  if (isSpinning.value || deleteDialogOpen.value) return
+  const item = wheelStore.nowWheel
+  if (!item.id) return
+  deleteDialogOpen.value = true
+  uni.showModal({
+    title: '删除整个转盘',
+    content: '将「' + item.name + '」移入回收站？7天内可在“我的 → 转盘回收站”恢复。',
+    confirmText: '删除',
+    confirmColor: '#df655b',
+    success: (result) => {
+      if (result.confirm && wheelStore.deleteWheel(item.id)) {
+        closeSettings()
+        displayIndex.value = 999
+        uni.showToast({ title: '已移入回收站', icon: 'none' })
+      }
+    },
+    complete: () => { deleteDialogOpen.value = false },
+  })
 }
 
 const updateSetting = (setting: keyof Settings) => {
@@ -581,6 +611,10 @@ onUnmounted(() => {
 
 const Go = (setUrl:string)=>{
   if (isSpinning.value || deleteDialogOpen.value) return
+  if (!wheelStore.nowWheel.id) {
+    uni.navigateTo({ url: '/pagesWheel/wheelEdit/index?mode=1' })
+    return
+  }
   uni.navigateTo({
     url: setUrl
   })
@@ -592,20 +626,31 @@ const Go = (setUrl:string)=>{
 <style lang="scss" scoped>
 .page {
   width: 100%;
-  background: #fff5e9;
+  background: transparent;
 
-  // 当前奖项标题
+  // 展示区承接原本标题和上方留白的总高度，圆盘位置保持稳定。
   .now-prize {
     width: 100%;
-    height: 100rpx;
-
+    height: 200rpx;
+    padding: 0 24rpx 48rpx;
+    box-sizing: border-box;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-end;
 
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #ff7043;
+    .now-prize-text {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+      overflow: hidden;
+      overflow-wrap: break-word;
+      max-width: 100%;
+      font-size: 40rpx;
+      line-height: 1.4;
+      font-weight: bold;
+      text-align: center;
+      color: var(--dragon-accent);
+    }
   }
 
   // 正方形转盘容器
@@ -614,20 +659,22 @@ const Go = (setUrl:string)=>{
     height: 0;
     // 百分比内边距根据容器宽度计算，使转盘保持正方形
     padding-bottom: 100%;
-    margin: 20rpx auto 48rpx;
+    margin: 0 auto 48rpx;
     position: relative;
 
     // 圆盘
     .wheel {
       width: 100%;
       height: 100%;
+      // 旋转的方形奖项层裁切在圆盘内，避免伸到下方遮挡按钮。
+      overflow: hidden;
 
       position: absolute;
       left: 0;
       top: 0;
 
       border-radius: 50%;
-      border: 6rpx solid #ffb52e;
+      border: 6rpx solid var(--dragon-wheelTrim);
       box-sizing: border-box;
 
       // JS 控制旋转，不设置 transition
@@ -666,15 +713,15 @@ const Go = (setUrl:string)=>{
       height: 150rpx;
 
       border-radius: 50%;
-      background: #fff;
-      border: 10rpx solid #ffb52e;
+      background: var(--dragon-surface);
+      border: 10rpx solid var(--dragon-wheelTrim);
       box-sizing: border-box;
 
       display: flex;
       justify-content: center;
       align-items: center;
 
-      color: #ff7043;
+      color: var(--dragon-accent);
       font-size: 50rpx;
       font-weight: bold;
       z-index: 2;
@@ -694,7 +741,7 @@ const Go = (setUrl:string)=>{
       // 三角形尖端朝下
       border-left: 13px solid transparent;
       border-right: 13px solid transparent;
-      border-bottom: 22px solid #ffb52e;
+      border-bottom: 22px solid var(--dragon-wheelTrim);
     }
   }
 
@@ -716,7 +763,7 @@ const Go = (setUrl:string)=>{
       align-items: center;
       justify-content: center;
       padding: 30rpx;
-      background-color: #e0d7d7;
+      background-color: var(--dragon-raised);
       border-radius: 50%;
       transition: transform 0.15s ease;
     }
@@ -736,7 +783,7 @@ const Go = (setUrl:string)=>{
     height: 8rpx;
     margin: 0 auto 24rpx;
     border-radius: 8rpx;
-    background: #e2e7ef;
+    background: var(--dragon-border);
   }
 
   .settings-header {
@@ -749,7 +796,7 @@ const Go = (setUrl:string)=>{
   .settings-title {
     font-size: 34rpx;
     font-weight: 600;
-    color: #2c3a52;
+    color: var(--dragon-text);
   }
 
   .settings-close {
@@ -761,11 +808,28 @@ const Go = (setUrl:string)=>{
     padding: 0;
     margin: 0;
     border-radius: 50%;
-    background: #f2f5f9;
+    background: var(--dragon-raised);
   }
 
   .settings-content {
     height: 60vh;
+  }
+
+  .settings-delete {
+    margin: 24rpx 0 0;
+    padding: 0 24rpx;
+    border-radius: 20rpx;
+    background: var(--dragon-dangerSurface);
+    color: var(--dragon-danger);
+    font-size: 30rpx;
+
+    &::after {
+      border: none;
+    }
+  }
+
+  .settings-delete-pressed {
+    background: var(--dragon-dangerPressed);
   }
 
   .settings-done {
@@ -788,7 +852,7 @@ const Go = (setUrl:string)=>{
     margin-bottom: 20rpx;
     padding: 10rpx;
     border-radius: 15rpx;
-    background-color: #e0dcdc;
+    background-color: var(--dragon-raised);
 
     .setting-text {
       display: flex;
@@ -801,7 +865,7 @@ const Go = (setUrl:string)=>{
     }
 
     .setting-text-disabled {
-      color: #a0a0a0;
+      color: var(--dragon-muted);
     }
   }
 }

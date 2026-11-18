@@ -1,0 +1,4 @@
+<resources>
+    <string name="mytools_clicker_name">myTools 连点器</string>
+    <string name="mytools_clicker_description">在您点击悬浮面板的开始按钮后，按选定方案执行点击或滑动。可随时停止。</string>
+</resources>

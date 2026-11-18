@@ -21,13 +21,18 @@
 </script>
     
 <style lang="scss" scoped>
+    .wheel-group {
+      :deep(.uni-group__content) {
+        background: var(--dragon-surface);
+      }
+    }
     .group-title {
-      background-color: #fff5e9;
-      color: #999999;
+      background-color: var(--dragon-surface);
+      color: var(--dragon-muted);
       font-size: 35rpx;
     }
     .group-content{
-        background-color: #fff5e9;
+        background-color: var(--dragon-surface);
     }
     
 </style>

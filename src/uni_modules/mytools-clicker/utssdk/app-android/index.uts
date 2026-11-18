@@ -1,0 +1,22 @@
+import Intent from 'android.content.Intent'
+import Settings from 'android.provider.Settings'
+import { UTSAndroid } from 'io.dcloud.uts'
+
+export function isClickerReady(): boolean {
+  return ClickerService.isReady()
+}
+
+export function openClickerSettings(): void {
+  const activity = UTSAndroid.getUniActivity()
+  if (activity != null) {
+    activity.startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+  }
+}
+
+export function configureClicker(plansJson: string, selectedId: string, edit: boolean): boolean {
+  return ClickerService.configure(plansJson, selectedId, edit)
+}
+
+export function drainClickerChanges(): string {
+  return ClickerService.drainChanges()
+}

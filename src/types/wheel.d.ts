@@ -7,6 +7,10 @@ export interface Wheel {
 
 export type WheelDraft = Omit<Wheel, 'id'>
 
+export interface DeletedWheel extends Wheel {
+  deletedAt: number
+}
+
 export interface WheelPopupInstance {
   open: () => void
   close: () => void

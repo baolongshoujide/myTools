@@ -1,5 +1,15 @@
 <template>
-  <view class="watermark-page">
+  <view class="watermark-page" :style="theme.pageStyle">
+    <view class="service-notice">
+      <uni-notice-bar
+        text="使用前请联系管理员开启图片处理服务，开启后即可使用。"
+        :show-icon="true"
+        :scrollable="true"
+        :speed="50"
+        :color="theme.colors.accent"
+        :background-color="theme.colors.raised"
+      />
+    </view>
     <view class="intro">自动识别水印，也可以手动圈选后修复</view>
     <view class="image-panel" @tap="chooseImage">
       <image v-if="selectedImage" class="preview" :src="selectedImage" mode="aspectFit" />
@@ -35,6 +45,9 @@ import { onUnload } from '@dcloudio/uni-app'
 import { getJob, imageUrl, submitImage } from './api'
 import RegionSelector from './components/RegionSelector.vue'
 import type { WatermarkMode, WatermarkPollTimer, WatermarkRegion, WatermarkSubmitOptions } from '@/types/watermark'
+import { usePageTheme } from '@/composables/usePageTheme'
+
+const theme = usePageTheme()
 
 const selectedImage = ref('')
 const resultImage = ref('')
@@ -164,20 +177,24 @@ onUnload(() => {
 
 <style lang="scss" scoped>
 .watermark-page {
+  .service-notice {
+    overflow: hidden;
+    border-radius: 16rpx;
+  }
   min-height: 100vh;
   padding: 32rpx 24rpx;
   box-sizing: border-box;
-  background: #f6f7fb;
+  background: var(--dragon-page);
 }
 .intro {
   margin-bottom: 24rpx;
-  color: #555;
+  color: var(--dragon-muted);
   font-size: 28rpx;
 }
 .image-panel, .result-panel {
   padding: 24rpx;
   border-radius: 20rpx;
-  background: white;
+  background: var(--dragon-surface);
 }
 .preview {
   display: block;
@@ -189,23 +206,23 @@ onUnload(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #888;
+  color: var(--dragon-muted);
 }
 button {
   margin-top: 24rpx;
   font-size: 30rpx;
 }
 .primary {
-  background: #2878ff;
+  background: var(--dragon-primary);
   color: white;
 }
 .primary[disabled] {
-  background: #aebed8;
+  background: var(--dragon-border);
   color: white;
 }
 .choose {
-  background: white;
-  color: #2878ff;
+  background: var(--dragon-surface);
+  color: var(--dragon-accent);
 }
 .process-actions {
   display: flex;
@@ -220,21 +237,21 @@ button {
   font-size: 28rpx;
 }
 .manual-button {
-  background: #eaf1ff;
-  color: #2878ff;
+  background: var(--dragon-raised);
+  color: var(--dragon-accent);
 }
 .manual-button[disabled] {
-  background: #e9edf4;
+  background: var(--dragon-border);
   color: #a1adbf;
 }
 .message {
   display: block;
   margin: 24rpx 0;
-  color: #555;
+  color: var(--dragon-muted);
   font-size: 26rpx;
 }
 .error {
-  color: #c43f3f;
+  color: var(--dragon-danger);
 }
 .result-panel {
   margin-top: 32rpx;
@@ -252,13 +269,13 @@ button {
   font-size: 26rpx;
 }
 .tabs .active {
-  color: #2878ff;
-  background: #eaf1ff;
+  color: var(--dragon-accent);
+  background: var(--dragon-raised);
 }
 .hint {
   display: block;
   font-size: 24rpx;
-  color: #888;
+  color: var(--dragon-muted);
   margin-top: 20rpx;
 }
 </style>

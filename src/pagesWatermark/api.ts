@@ -5,6 +5,8 @@ export const serviceUrl = (
   import.meta.env.VITE_WATERMARK_API_URL || 'http://127.0.0.1:8765'
 ).replace(/\/$/, '')
 
+const localServiceUnavailableMessage = '连接不到本机图片处理服务。请在项目根目录运行 pnpm fwq，并保持窗口开启。'
+
 const checkManualSupport = (): Promise<void> => {
   return new Promise((resolve, reject) => {
     uni.request({
@@ -18,7 +20,7 @@ const checkManualSupport = (): Promise<void> => {
         }
         resolve()
       },
-      fail: () => reject(new Error('暂时无法连接图片处理服务，请稍后再试')),
+      fail: () => reject(new Error(localServiceUnavailableMessage)),
     })
   })
 }
@@ -47,7 +49,7 @@ export const submitImage = async (filePath: string, options: WatermarkSubmitOpti
           reject(new Error('服务返回异常，请稍后重试'))
         }
       },
-      fail: () => reject(new Error('暂时无法连接图片处理服务，请稍后再试')),
+      fail: () => reject(new Error(localServiceUnavailableMessage)),
     })
   })
 }
@@ -64,7 +66,7 @@ export const getJob = (id: string): Promise<WatermarkJob> => {
         }
         resolve(response.data as WatermarkJob)
       },
-      fail: () => reject(new Error('网络连接中断，请重新尝试')),
+      fail: () => reject(new Error('图片处理服务连接中断。请确认 pnpm fwq 对应的终端仍在运行。')),
     })
   })
 }

@@ -1,5 +1,5 @@
 <template>
-  <view class="wheel-edit">
+  <view class="wheel-edit" :style="theme.pageStyle">
     <uni-forms ref="form" :model="draftWheel" :rules="formRules" err-show-type="toast">
       <Item>
         <template #title>轮盘标题</template>
@@ -48,11 +48,11 @@
             <view class="action-display">
               <MyInput
                 placeholder="添加新选项"
-                placeholder-style="color:#2979FF;font-size:18px"
+                :placeholder-style="`color:${theme.colors.accent};font-size:18px`"
                 disabled
               >
                 <template #left>
-                  <image class="prefix-icon" src="/static/添加.png" mode="aspectFit" />
+                  <image class="prefix-icon" src="/static/add.png" mode="aspectFit" />
                 </template>
               </MyInput>
             </view>
@@ -61,11 +61,11 @@
             <view class="action-display">
               <MyInput
                 placeholder="批量添加选项"
-                placeholder-style="color:#2979FF;font-size:18px"
+                :placeholder-style="`color:${theme.colors.accent};font-size:18px`"
                 disabled
               >
                 <template #left>
-                  <image class="prefix-icon" src="/static/批量添加.png" mode="aspectFit" />
+                  <image class="prefix-icon" src="/static/bulk-add.png" mode="aspectFit" />
                 </template>
               </MyInput>
             </view>
@@ -83,11 +83,11 @@
     </view>
   </view>
 
-  <uni-popup ref="popup" type="bottom" background-color="#fff" border-radius="10px 10px 0 0">
-    <view class="popup">
+  <uni-popup ref="popup" type="bottom" :background-color="theme.colors.surface" border-radius="10px 10px 0 0">
+    <view class="popup" :style="theme.pageStyle">
       <view style="display: flex; flex-direction: column; align-items: center;">
         <text>输入添加项并用，或。隔开</text>
-        <text style="color: red; font-size: 12px;">温馨提示：空格和回车也可哟</text>
+        <text class="bulk-hint">温馨提示：空格和回车也可哟</text>
       </view>
       <textarea v-model="more" placeholder="请输入内容" :maxlength="-1" />
       <button class="button" @tap="importDraftPrizes">一键导入(共{{ importedPrizes.length }}个选项)</button>
@@ -102,6 +102,9 @@ import { useWheelStore } from '@/store/modules/wheel'
 import type { Wheel, WheelFormInstance, WheelPopupInstance } from '@/types/wheel'
 import Item from './components/Item.vue'
 import MyInput from './components/MyInput.vue'
+import { usePageTheme } from '@/composables/usePageTheme'
+
+const theme = usePageTheme()
 
 const wheelStore = useWheelStore()
 const form = ref<WheelFormInstance>()
@@ -214,6 +217,10 @@ const save = async () => {
   try {
     await nextTick()
     await form.value.validate()
+    if (wheelStore.hasWheelName(draftWheel.value.name, isCreating.value ? undefined : draftWheel.value.id)) {
+      uni.showToast({ title: '转盘名称已存在，请换一个', icon: 'none' })
+      return
+    }
     const saved = isCreating.value
       ? wheelStore.addWheel(draftWheel.value)
       : wheelStore.updateWheel(draftWheel.value)
@@ -235,7 +242,7 @@ const save = async () => {
   min-height: 100vh;
   box-sizing: border-box;
   padding: 24rpx;
-  background: #fff5e9;
+  background: var(--dragon-page);
   padding-bottom: 140rpx;
   :deep(.uni-forms-item) {
     margin-bottom: 0;
@@ -274,7 +281,7 @@ const save = async () => {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    color: #999999;
+    color: var(--dragon-muted);
     font-size: 35rpx;
 
     .time-label {
@@ -295,7 +302,7 @@ const save = async () => {
   .hint {
     display: block;
     margin-top: 20rpx;
-    color: #999;
+    color: var(--dragon-muted);
     font-size: 24rpx;
   }
   .bottom-buttons {
@@ -307,7 +314,7 @@ const save = async () => {
   gap: 30rpx;
   padding: 20rpx 30rpx;
   box-sizing: border-box;
-  background-color: #fff;
+  background-color: var(--dragon-base);
   z-index: 99;
 
   .button {
@@ -316,7 +323,7 @@ const save = async () => {
 
   .reset {
     flex: 1;
-    background-color: red;
+    background-color: #563247;
   }
 
   .save {
@@ -329,6 +336,11 @@ const save = async () => {
   }
 }
 .popup{
+  .bulk-hint {
+    color: var(--dragon-muted);
+    font-size: 12px;
+  }
+
   width: 100vw;
   height: 60vh;
   padding: 40rpx;
@@ -338,9 +350,10 @@ const save = async () => {
   align-items: center;
   gap: 30rpx;
   textarea{
+    color: var(--dragon-text);
     width: 100%;
     height: 70%;
-    background-color: #f5f5f5;
+    background-color: var(--dragon-raised);
     border-radius: 10px;
     padding: 20rpx;
     box-sizing: border-box;
@@ -348,7 +361,7 @@ const save = async () => {
   
 }
 .button{
-    background-color: rgb(30, 86, 132);
+    background-color: var(--dragon-primary);
     width: 100%;
     border-radius: 30px;
     color: #fff;

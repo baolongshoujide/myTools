@@ -4,3 +4,5 @@ export interface MainSwiperEvent {
     source?: string
   }
 }
+
+export type ListMode = 'wheel' | 'clicker'
